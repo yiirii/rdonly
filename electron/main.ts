@@ -19,6 +19,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280, height: 860, minWidth: 420, minHeight: 600,
     backgroundColor: '#111214', autoHideMenuBar: true, title: 'Rd Only', show: false,
+    icon: join(__dirname, 'app', 'icons', 'icon-512.png'),
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
   win.removeMenu()
