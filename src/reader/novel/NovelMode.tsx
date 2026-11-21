@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { settingsStore, useSettings, type Settings } from '../../state/settings'
 import type { ReaderModeProps } from '../types'
+import { closeReader } from '../../state/route'
 import { FONTS, fontFaces } from './fonts'
 import { ReadingSettings } from './ReadingSettings'
 import { themeById } from './themes'
@@ -78,11 +79,15 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
           const x = (frame.left + ev.clientX - box.left) / box.width
           if (x < 0.3) v.goLeft(); else if (x > 0.7) v.goRight(); else toggle.current()
         })
-        doc.addEventListener('keydown', (ev) => keyNav(ev, v))
+        doc.addEventListener('keydown', (ev) => keyNav(ev, v, true)) // keys pressed inside the book's frame
       })
       await v.init({ lastLocation: initial?.locator, showTextStart: !initial })
     })().catch(() => { if (alive) onError('The file may be damaged or protected. Try importing it again.') })
-    return () => { alive = false; view.current?.close(); view.current?.remove(); view.current = undefined }
+    return () => {
+      alive = false
+      const v = view.current as (FoliateView & { book?: { destroy?(): void } }) | undefined
+      v?.close(); v?.book?.destroy?.(); v?.remove(); view.current = undefined
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file])
 
@@ -112,7 +117,9 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   )
 }
 
-function keyNav(e: KeyboardEvent, v: FoliateView) {
+function keyNav(e: KeyboardEvent, v: FoliateView, inFrame = false) {
+  // Escape outside the frame is handled by the reader itself; inside the frame it never reaches it.
+  if (e.key === 'Escape') { if (inFrame && !document.querySelector('[role="dialog"]')) closeReader(); return }
   if (e.key === 'ArrowLeft' || e.key === 'PageUp') v.goLeft()
   else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') v.goRight()
   else return

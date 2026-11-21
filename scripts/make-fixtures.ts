@@ -126,6 +126,16 @@ writeFileSync(`${out}/book.mobi`, strToU8('BOOKMOBI' + '\0'.repeat(64)))
   }
   writeFileSync(`${out}/damaged-page.cbz`, z)
 }
+// A comic stored without compression (like most real CBZs) whose second page image is corrupt.
+{
+  const bad = png(60, 90, [160, 90, 90])
+  for (let k = 40; k < bad.length - 12; k++) bad[k] = 0x5a // keep the signature, wreck the image data
+  writeFileSync(`${out}/stored-damaged.cbz`, zipSync({
+    '1.png': [png(60, 90, [90, 160, 90]), { level: 0, mtime: fixed.mtime }],
+    '2.png': [bad, { level: 0, mtime: fixed.mtime }],
+    '3.png': [png(60, 90, [90, 90, 160]), { level: 0, mtime: fixed.mtime }],
+  }))
+}
 // A webtoon: 12 very tall pages.
 writeFileSync(`${out}/webtoon.cbz`, zip(Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`${String(i + 1).padStart(2, '0')}.png`, png(60, 400, [20 * i, 140, 200 - 12 * i])]))))
 // A long novel: 3 chapters of deterministic generated prose, with a navigation TOC.

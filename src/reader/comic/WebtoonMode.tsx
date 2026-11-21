@@ -15,7 +15,7 @@ export function WebtoonMode({ book, file, initial, onProgress, chrome, onError }
   const [anchor, setAnchor] = useState(() => parse(initial?.locator))
   const programmatic = useRef(false) // our own scroll jumps aren't the reader scrolling
 
-  const { count, pages, failed, ready } = usePages(file, book.format, range(anchor.page - 2, anchor.page + 3), range(anchor.page - 5, anchor.page + 6))
+  const { count, pages, failed, ready, markError } = usePages(file, book.format, range(anchor.page - 2, anchor.page + 3), range(anchor.page - 5, anchor.page + 6))
 
   const known = Object.values(ratios)
   const avg = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 3
@@ -74,7 +74,7 @@ export function WebtoonMode({ book, file, initial, onProgress, chrome, onError }
           return (
             <div key={i} className="webtoon-page" data-testid="webtoon-page" data-page={i} style={{ top: tops[i], height: heights[i] }}>
               {p && 'url' in p ? (
-                <img src={p.url} alt={`Page ${i + 1}`} draggable={false}
+                <img src={p.url} alt={`Page ${i + 1}`} draggable={false} onError={() => markError(i)}
                   onLoad={(e) => { const im = e.currentTarget; const r = im.naturalHeight / im.naturalWidth; if (ratios[i] !== r) setRatios((s) => ({ ...s, [i]: r })) }} />
               ) : p && 'error' in p ? <div className="page-error" data-testid="page-error"><span>Page {i + 1} couldn’t be read</span></div> : null}
             </div>

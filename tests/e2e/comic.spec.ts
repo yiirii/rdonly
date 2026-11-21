@@ -78,3 +78,32 @@ test('tapping the middle shows and hides the bars', async ({ page }) => {
   await tap(page, 'middle')
   await expect(page.getByTestId('reader-back')).toBeVisible()
 })
+
+test('a corrupt page in an uncompressed comic shows a tile too', async ({ page }) => {
+  test.skip(test.info().project.name !== 'iphone')
+  await open(page, 'stored-damaged.cbz')
+  await page.keyboard.press('ArrowRight'); await page.waitForTimeout(400)
+  await expect(page.locator('[data-testid="comic-spread"][data-current="true"] [data-testid="page-error"]')).toBeVisible()
+})
+
+test('two quick taps on the page edge turn two pages (no zoom)', async ({ page }) => {
+  test.skip(test.info().project.name !== 'iphone')
+  await open(page, 'plain.cbz')
+  const vp = page.viewportSize()!
+  await page.mouse.dblclick(vp.width * 0.9, vp.height / 2)
+  await page.waitForTimeout(500)
+  expect(await shown(page)).toEqual([2])
+  expect(await page.getByTestId('comic-zoom').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a)).toBeCloseTo(1, 2)
+})
+
+test('a cancelled touch (e.g. a system swipe) does not turn the page', async ({ page }) => {
+  test.skip(test.info().project.name !== 'iphone')
+  await open(page, 'plain.cbz')
+  await page.getByTestId('comic').evaluate((el) => {
+    const r = el.getBoundingClientRect(), x = r.width * 0.9, y = r.height / 2
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7, clientX: x, clientY: y, isPrimary: true }))
+    el.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 7, clientX: x, clientY: y, isPrimary: true }))
+  })
+  await page.waitForTimeout(500)
+  expect(await shown(page)).toEqual([0])
+})

@@ -25,7 +25,7 @@ export function PagedComicMode({ book, file, initial, onProgress, chrome, onErro
   const [dir, setDir] = useState(1)
 
   const near = (from: number, span: number) => Array.from({ length: span * 2 + 2 }, (_, k) => from - span + k)
-  const { count, ready, failed, pages } = usePages(file, book.format, near(page, 4), near(page, 8))
+  const { count, ready, failed, pages, markError } = usePages(file, book.format, near(page, 4), near(page, 8))
 
   const spreads = useMemo(
     () => buildSpreads(Array.from({ length: count }, (_, i) => sizes[i]), { double, coverAlone: true }),
@@ -107,7 +107,7 @@ export function PagedComicMode({ book, file, initial, onProgress, chrome, onErro
               return (
                 <div key={i} className="comic-page" data-testid="comic-page" data-page={i}>
                   {p && 'url' in p ? (
-                    <img src={p.url} alt={`Page ${i + 1}`} draggable={false}
+                    <img src={p.url} alt={`Page ${i + 1}`} draggable={false} onError={() => markError(i)}
                       onLoad={(e) => { const im = e.currentTarget; if (!sizes[i]) setSizes((s) => ({ ...s, [i]: { w: im.naturalWidth, h: im.naturalHeight } })) }} />
                   ) : p && 'error' in p ? (
                     <div className="page-error" data-testid="page-error"><span>Page {i + 1} couldn’t be read</span></div>

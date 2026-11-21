@@ -35,11 +35,11 @@ export function useZoomPan({ onTap, onSwipe, onWheel, resetKey }: Opts) {
 
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const start = useRef<{ x: number; y: number; t: Xform; dist?: number; mid?: { x: number; y: number }; moved: boolean; pinched: boolean } | null>(null)
-  const lastTap = useRef<{ at: number; x: number; y: number } | null>(null)
+  const lastTap = useRef<{ at: number; x: number; y: number; middle: boolean } | null>(null)
   const pendingTap = useRef<ReturnType<typeof setTimeout>>()
 
   const onPointerDown = (e: React.PointerEvent) => {
-    ref.current?.setPointerCapture?.(e.pointerId)
+    try { ref.current?.setPointerCapture?.(e.pointerId) } catch { /* pointer already gone */ }
     const p = local(e)
     pointers.current.set(e.pointerId, p)
     if (pointers.current.size === 1) start.current = { x: p.x, y: p.y, t: tRef.current, moved: false, pinched: false }
@@ -83,16 +83,27 @@ export function useZoomPan({ onTap, onSwipe, onWheel, resetKey }: Opts) {
     const zoomed = tRef.current.s > 1.01
     const now = performance.now()
     const prev = lastTap.current
-    if (prev && now - prev.at < DOUBLE_TAP_MS && Math.hypot(p.x - prev.x, p.y - prev.y) < 40) {
+    // Double tap only in the middle (or when zoomed), so quick taps on the edges turn pages.
+    if (prev && (middle || zoomed) && (prev.middle || zoomed) && now - prev.at < DOUBLE_TAP_MS && Math.hypot(p.x - prev.x, p.y - prev.y) < 40) {
       clearTimeout(pendingTap.current); lastTap.current = null
       settle(zoomed ? ID : zoomAt(tRef.current, p, 2.5, LIMITS))
       return
     }
-    lastTap.current = { at: now, x: p.x, y: p.y }
+    lastTap.current = { at: now, x: p.x, y: p.y, middle }
     if (middle || zoomed) {
       clearTimeout(pendingTap.current)
       pendingTap.current = setTimeout(() => { if (!zoomed || middle) cb.current.onTap(p.x, p.y) }, DOUBLE_TAP_MS)
     } else cb.current.onTap(p.x, p.y)
+  }
+
+  /** A cancelled touch (system gesture, notification pull) is never a tap or a swipe. */
+  const onPointerCancel = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size > 0) return
+    const s = start.current
+    start.current = null
+    setLive(false)
+    if (s && (s.pinched || s.t.s > 1.01)) settle(tRef.current)
   }
 
   // Wheel needs a non-passive listener so Ctrl+wheel doesn't zoom the whole window.
@@ -119,7 +130,7 @@ export function useZoomPan({ onTap, onSwipe, onWheel, resetKey }: Opts) {
     ref,
     zoomed: t.s > 1.01,
     reset: () => setT(ID),
-    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
+    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
     style: {
       transform: `translate3d(${t.x}px, ${t.y}px, 0) scale(${t.s})`,
       transformOrigin: '0 0',

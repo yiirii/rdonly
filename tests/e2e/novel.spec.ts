@@ -74,3 +74,13 @@ test('a fixed-layout book opens as pages', async ({ page }) => {
   await open(page, 'fixed.epub')
   await expect(page.getByTestId('novel')).toHaveAttribute('data-layout', 'fixed')
 })
+
+test('Escape closes the book even after clicking into the page', async ({ page }) => {
+  test.skip(test.info().project.name !== 'laptop')
+  await open(page)
+  const f = bookFrame(page)
+  await f.locator('body').click({ position: { x: 300, y: 300 } })
+  await page.waitForTimeout(300)
+  await f.locator('body').press('Escape')
+  await expect(page.getByTestId('reader')).toHaveCount(0)
+})
