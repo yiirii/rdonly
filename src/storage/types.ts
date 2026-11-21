@@ -23,6 +23,8 @@ export interface RdOnlyBridge {
   platform: 'electron'
   records: RecordStore
   files: Omit<FileStore, 'getBlob'>
+  /** Called when the window is closing; the window waits (briefly) for the returned promise. */
+  onBeforeClose?(save: () => Promise<void>): void
 }
 
 export function bridge(): RdOnlyBridge | undefined {

@@ -23,6 +23,17 @@ function createWindow() {
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
   win.removeMenu()
+  // Let the page save the reading position, and the disk catch up, before the window goes away.
+  let closing = false
+  win.on('close', (e) => {
+    if (closing) return
+    e.preventDefault()
+    closing = true
+    const done = async () => { await storage.idle().catch(() => {}); if (!win.isDestroyed()) win.destroy() }
+    const timer = setTimeout(done, 1500)
+    ipcMain.once('rdonly:ready-to-close', () => { clearTimeout(timer); void done() })
+    win.webContents.send('rdonly:before-close')
+  })
   win.once('ready-to-show', () => win.show())
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) void shell.openExternal(url); return { action: 'deny' } })
   win.webContents.on('will-navigate', (e) => e.preventDefault())
@@ -30,4 +41,4 @@ function createWindow() {
 }
 
 app.whenReady().then(createWindow)
-app.on('window-all-closed', () => app.quit())
+app.on('window-all-closed', () => { void storage.idle().finally(() => app.quit()) })

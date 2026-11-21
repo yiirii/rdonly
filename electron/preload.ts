@@ -5,5 +5,10 @@ const call = (area: string, method: string) => (...args: unknown[]) => ipcRender
 contextBridge.exposeInMainWorld('rdonly', {
   platform: 'electron',
   records: { get: call('records', 'get'), put: call('records', 'put'), list: call('records', 'list'), remove: call('records', 'remove') },
+  onBeforeClose: (save: () => Promise<void>) => {
+    ipcRenderer.on('rdonly:before-close', async () => {
+      try { await save() } finally { ipcRenderer.send('rdonly:ready-to-close') }
+    })
+  },
   files: { put: call('files', 'put'), get: call('files', 'get'), has: call('files', 'has'), remove: call('files', 'remove'), usage: call('files', 'usage') },
 })

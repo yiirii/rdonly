@@ -2,6 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import type { BookRecord } from '../library/types'
 import { closeReader } from '../state/route'
+import { registerFlush } from '../state/flush'
 import { createProgressSaver, loadProgress, type ProgressRecord } from '../state/progress'
 import { getRecordStore } from '../storage/select'
 import { getFileStore } from '../storage/files'
@@ -64,6 +65,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
   // Save on the way out, however the reader is left.
   useEffect(() => {
+    const unregister = registerFlush(() => saver.flush())
     const hide = () => { if (document.visibilityState === 'hidden') void saver.flush() }
     const leave = () => void saver.flush()
     document.addEventListener('visibilitychange', hide)
@@ -73,6 +75,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       document.removeEventListener('visibilitychange', hide)
       window.removeEventListener('pagehide', leave)
       window.removeEventListener('beforeunload', leave)
+      unregister()
       void saver.flush()
     }
   }, [saver])

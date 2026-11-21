@@ -6,7 +6,7 @@ const SAFE = /^[a-zA-Z0-9_-]+$/
 const check = (kind: string, v: string) => { if (!SAFE.test(v)) throw new Error(`Invalid ${kind}: ${v}`) }
 
 /** Records as one JSON file per collection (atomic temp+rename); books as files. */
-export function createDiskStorage(root: string): { records: RecordStore; files: Omit<FileStore, 'getBlob'> } {
+export function createDiskStorage(root: string): { records: RecordStore; files: Omit<FileStore, 'getBlob'>; idle(): Promise<void> } {
   const recDir = join(root, 'records')
   const bookDir = join(root, 'books')
   const cache = new Map<string, Promise<Map<string, BaseRecord>>>()
@@ -87,5 +87,7 @@ export function createDiskStorage(root: string): { records: RecordStore; files: 
       return { usedBytes: used }
     },
   }
-  return { records, files }
+  /** Resolves once every queued record write has reached the disk. */
+  const idle = async () => { await Promise.all([...queue.values()]) }
+  return { records, files, idle }
 }
