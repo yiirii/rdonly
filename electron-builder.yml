@@ -21,7 +21,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  # Installing a newer version runs the old version's uninstaller first (same appId).
+  # Same appId on every version: installing a newer one silently removes the old one and keeps your library (%APPDATA%\\Rd Only).
   deleteAppDataOnUninstall: false
   shortcutName: Rd Only
 asar: true
