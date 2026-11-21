@@ -46,6 +46,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const records = getRecordStore()
   const saver = useMemo(() => createProgressSaver(records, bookId), [records, bookId])
   const [label, setLabel] = useState('')
+  const [modeError, setModeError] = useState<string | null>(null)
   const [extras, setChromeExtras] = useState<{ right?: React.ReactNode; bottom?: React.ReactNode; tone?: 'light' | 'dark' }>({})
 
   useEffect(() => {
@@ -112,9 +113,16 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       <motion.div className="reader-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} />
 
       {load.state === 'ready' && Mode && (
-        <motion.div className="reader-stage" initial={{ opacity: 0 }} animate={{ opacity: coverOut ? 1 : 0 }} transition={{ duration: 0.22 }}>
-          <Mode key={mode} book={load.book} file={load.file} initial={load.initial} onProgress={onProgress} chrome={chrome} setChromeExtras={setChromeExtras} />
+        <motion.div className="reader-stage" style={modeError ? { visibility: 'hidden' } : undefined} initial={{ opacity: 0 }} animate={{ opacity: coverOut ? 1 : 0 }} transition={{ duration: 0.22 }}>
+          <Mode key={mode} book={load.book} file={load.file} initial={load.initial} onProgress={onProgress} chrome={chrome} setChromeExtras={setChromeExtras} onError={setModeError} />
         </motion.div>
+      )}
+      {modeError && (
+        <div className="reader-note error-note" data-testid="reader-error">
+          <h2>This book couldn’t be opened</h2>
+          <p>{modeError}</p>
+          <button className="keycap" onClick={closeReader}>Back to library</button>
+        </div>
       )}
       {load.state === 'ready' && !Mode && coverOut && (
         <div className="reader-note"><p>This reading mode arrives later in v0.2.</p></div>
@@ -137,7 +145,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         )}
       </AnimatePresence>
 
-      <ReaderChrome visible={chrome.visible || load.state !== 'ready'} title={known?.title ?? ''} onBack={closeReader} tone={extras.tone ?? 'dark'} onInteract={chrome.poke}
+      <ReaderChrome visible={chrome.visible || load.state !== 'ready' || !!modeError} title={known?.title ?? ''} onBack={closeReader} tone={extras.tone ?? 'dark'} onInteract={chrome.poke}
         right={<>{load.state === 'ready' && COMIC_FORMATS.includes(load.book.format) && (
           <ModeMenu mode={mode} onChange={async (m) => {
             const b = await libraryStore().getState().update(load.book.id, { modeOverride: m })

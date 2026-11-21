@@ -16,7 +16,7 @@ function useWide() {
   return wide
 }
 
-export function PagedComicMode({ book, file, initial, onProgress, chrome }: ReaderModeProps) {
+export function PagedComicMode({ book, file, initial, onProgress, chrome, onError }: ReaderModeProps) {
   const rtl = modeFor(book) === 'paged-rtl'
   const double = useWide()
   const reduce = useReducedMotion()
@@ -91,7 +91,11 @@ export function PagedComicMode({ book, file, initial, onProgress, chrome }: Read
     exit: (s: number) => (reduce ? { opacity: 0 } : { x: `${-s * 28}%`, opacity: 0 }),
   }
 
-  if (failed) return <div className="reader-note comic-error"><h2>This comic couldn’t be opened</h2><p>The file may be damaged. Try importing it again.</p></div>
+  useEffect(() => {
+    if (failed) onError('The file may be damaged. Try importing it again.')
+    else if (ready && count === 0) onError('There are no pages in this comic.')
+  }, [failed, ready, count, onError])
+  if (failed) return null
   return (
     <div className="comic" data-testid="comic" data-dir={rtl ? 'rtl' : 'ltr'} ref={zoom.ref} {...zoom.handlers}>
       <div className="comic-zoom" data-testid="comic-zoom" style={zoom.style}>

@@ -7,7 +7,7 @@ const parse = (loc?: string) => { const m = loc?.match(/^page:(\d+):?([\d.]*)/);
 const GAP = 12
 
 /** Documents: one continuous column of pages, fit to width, drawn only near the screen. */
-export function PdfMode({ file, initial, onProgress, chrome }: ReaderModeProps) {
+export function PdfMode({ file, initial, onProgress, chrome, onError }: ReaderModeProps) {
   const box = useRef<HTMLDivElement>(null)
   const [doc, setDoc] = useState<PDFDocumentProxy>()
   const [failed, setFailed] = useState(false)
@@ -89,7 +89,8 @@ export function PdfMode({ file, initial, onProgress, chrome }: ReaderModeProps) 
   const near = new Set<number>()
   for (let k = anchor.page - 2; k <= anchor.page + 3; k++) if (k >= 0 && k < count) near.add(k)
 
-  if (failed) return <div className="reader-note"><h2>This PDF couldn’t be opened</h2><p>The file may be damaged. Try importing it again.</p></div>
+  useEffect(() => { if (failed) onError('The PDF may be damaged. Try importing it again.') }, [failed, onError])
+  if (failed) return null
   return (
     <div className="pdf" data-testid="pdf" data-zoom={zoom.toFixed(2)} ref={box} onScroll={onScroll}
       onPointerDown={(e) => {

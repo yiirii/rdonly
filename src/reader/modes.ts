@@ -1,13 +1,19 @@
 import type { BookTag } from '../core/tags'
+import type { BookFormat } from '../core/formats'
 
 export type ReaderModeName = 'novel' | 'paged-ltr' | 'paged-rtl' | 'webtoon' | 'pdf'
 export const MODES: ReaderModeName[] = ['novel', 'paged-ltr', 'paged-rtl', 'webtoon', 'pdf']
 export const MODE_LABELS: Record<ReaderModeName, string> = {
   novel: 'Book pages', 'paged-ltr': 'Comic (left to right)', 'paged-rtl': 'Manga (right to left)', webtoon: 'Webtoon (scroll)', pdf: 'Document',
 }
-const BY_TAG: Record<BookTag, ReaderModeName> = { novel: 'novel', manga: 'paged-rtl', comic: 'paged-ltr', webtoon: 'webtoon', document: 'pdf' }
+export const COMIC_MODES: ReaderModeName[] = ['paged-rtl', 'paged-ltr', 'webtoon']
+const COMIC_BY_TAG: Partial<Record<BookTag, ReaderModeName>> = { manga: 'paged-rtl', webtoon: 'webtoon', comic: 'paged-ltr' }
 
-export function modeFor(book: { tag: BookTag; modeOverride?: string }): ReaderModeName {
+/** The file format decides what can be shown; for comics the tag (or a per-book choice) picks the direction. */
+export function modeFor(book: { format: BookFormat; tag: BookTag; modeOverride?: string }): ReaderModeName {
+  if (book.format === 'epub') return 'novel'
+  if (book.format === 'pdf') return 'pdf'
   const o = book.modeOverride as ReaderModeName | undefined
-  return o && MODES.includes(o) ? o : BY_TAG[book.tag]
+  if (o && COMIC_MODES.includes(o)) return o
+  return COMIC_BY_TAG[book.tag] ?? 'paged-ltr'
 }

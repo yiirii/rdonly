@@ -8,14 +8,14 @@ const parse = (loc?: string) => {
 }
 
 /** One continuous vertical strip. Pages near the screen are decoded; the rest are sized placeholders. */
-export function WebtoonMode({ book, file, initial, onProgress, chrome }: ReaderModeProps) {
+export function WebtoonMode({ book, file, initial, onProgress, chrome, onError }: ReaderModeProps) {
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [ratios, setRatios] = useState<Record<number, number>>({}) // h / w, learned as pages load
   const [anchor, setAnchor] = useState(() => parse(initial?.locator))
   const programmatic = useRef(false) // our own scroll jumps aren't the reader scrolling
 
-  const { count, pages } = usePages(file, book.format, range(anchor.page - 2, anchor.page + 3), range(anchor.page - 5, anchor.page + 6))
+  const { count, pages, failed, ready } = usePages(file, book.format, range(anchor.page - 2, anchor.page + 3), range(anchor.page - 5, anchor.page + 6))
 
   const known = Object.values(ratios)
   const avg = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 3
@@ -57,6 +57,11 @@ export function WebtoonMode({ book, file, initial, onProgress, chrome }: ReaderM
     onProgress({ locator: `scroll:${anchor.page}:${anchor.frac.toFixed(3)}`, percent: Math.min(1, (anchor.page + anchor.frac) / count), label: `${anchor.page + 1} / ${count}` })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchor, count])
+
+  useEffect(() => {
+    if (failed) onError('The file may be damaged. Try importing it again.')
+    else if (ready && count === 0) onError('There are no pages in this comic.')
+  }, [failed, ready, count, onError])
 
   const down = useRef<{ x: number; y: number } | null>(null)
   return (

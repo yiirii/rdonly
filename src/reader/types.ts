@@ -10,6 +10,8 @@ export interface ReaderModeProps {
   initial?: ProgressRecord
   onProgress(p: { locator: string; percent: number; label?: string }): void
   chrome: ChromeControl
+  /** The book couldn't be shown; the reader takes over with a message and a way back. */
+  onError(message: string): void
   /** Extra controls a mode puts in the bars (e.g. the novel's Aa button and slider). */
   setChromeExtras(x: { right?: ReactNode; bottom?: ReactNode; tone?: 'light' | 'dark' }): void
 }

@@ -28,7 +28,7 @@ img, svg { max-width: 100%; }`
 }
 
 /** Novels: foliate-js lays out the pages; we style them and drive navigation. */
-export function NovelMode({ book, file, initial, onProgress, chrome, setChromeExtras }: ReaderModeProps) {
+export function NovelMode({ book, file, initial, onProgress, chrome, setChromeExtras, onError }: ReaderModeProps) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<FoliateView>()
   const [cfi, setCfi] = useState<string>()
@@ -81,7 +81,7 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
         doc.addEventListener('keydown', (ev) => keyNav(ev, v))
       })
       await v.init({ lastLocation: initial?.locator, showTextStart: !initial })
-    })()
+    })().catch(() => { if (alive) onError('The file may be damaged or protected. Try importing it again.') })
     return () => { alive = false; view.current?.close(); view.current?.remove(); view.current = undefined }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file])
