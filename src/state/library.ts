@@ -1,6 +1,7 @@
 import { createStore, useStore } from 'zustand'
 import { importFiles, type ImportDeps, type ImportItem } from '../library/importBooks'
 import { folderToCbz } from '../library/folder'
+import { deleteBook, updateBook, type BookPatch } from '../library/editBook'
 import type { BookRecord, ImportResult } from '../library/types'
 import { getRecordStore } from '../storage/select'
 import { getFileStore } from '../storage/files'
@@ -16,6 +17,8 @@ interface LibraryState {
   load(): Promise<void>
   import(files: File[]): Promise<ImportResult[]>
   importFolder(files: File[]): Promise<ImportResult[]>
+  update(id: string, patch: BookPatch): Promise<BookRecord>
+  remove(id: string): Promise<void>
   setSort(s: SortKey): void
 }
 
@@ -41,6 +44,17 @@ export function createLibraryStore(deps: ImportDeps) {
     importFolder(files) {
       const item = folderToCbz(files)
       return item ? run([item]) : Promise.resolve([{ fileName: 'folder', status: 'unsupported' as const, message: 'No images in that folder' }])
+    },
+    async update(id, patch) {
+      const b = await updateBook(deps.records, id, patch, deps.now)
+      const all = get().all.map((x) => (x.id === id ? b : x))
+      set({ all, books: sorted(all, get().sort) })
+      return b
+    },
+    async remove(id) {
+      await deleteBook(deps.records, deps.files, id)
+      const all = get().all.filter((x) => x.id !== id)
+      set({ all, books: sorted(all, get().sort) })
     },
     setSort(sort) { set({ sort, books: sorted(get().all, sort) }) },
   }))

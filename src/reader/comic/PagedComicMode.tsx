@@ -7,7 +7,7 @@ import { buildSpreads, spreadFor } from './layout'
 import { usePages } from './usePages'
 import { useZoomPan } from '../gestures/useZoomPan'
 
-const pageFrom = (locator?: string) => { const m = locator?.match(/^page:(\d+)/); return m ? Number(m[1]) : 0 }
+const pageFrom = (locator?: string) => { const m = locator?.match(/^(?:page|scroll):(\d+)/); return m ? Number(m[1]) : 0 }
 
 function useWide() {
   const q = '(min-width: 900px) and (orientation: landscape)'

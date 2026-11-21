@@ -12,6 +12,8 @@ import { summarize } from '../state/library'
 import { modeFor, type ReaderModeName } from './modes'
 import { takeOpenOrigin } from './openOrigin'
 import { ReaderChrome } from './ReaderChrome'
+import { ModeMenu } from './ModeMenu'
+import { COMIC_FORMATS } from '../core/formats'
 import type { ChromeControl, ReaderModeProps } from './types'
 
 type Load = { state: 'loading' } | { state: 'gone' } | { state: 'missing'; book: BookRecord }
@@ -111,7 +113,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
       {load.state === 'ready' && Mode && (
         <motion.div className="reader-stage" initial={{ opacity: 0 }} animate={{ opacity: coverOut ? 1 : 0 }} transition={{ duration: 0.22 }}>
-          <Mode book={load.book} file={load.file} initial={load.initial} onProgress={onProgress} chrome={chrome} setChromeExtras={setChromeExtras} />
+          <Mode key={mode} book={load.book} file={load.file} initial={load.initial} onProgress={onProgress} chrome={chrome} setChromeExtras={setChromeExtras} />
         </motion.div>
       )}
       {load.state === 'ready' && !Mode && coverOut && (
@@ -136,7 +138,14 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       </AnimatePresence>
 
       <ReaderChrome visible={chrome.visible || load.state !== 'ready'} title={known?.title ?? ''} onBack={closeReader} tone={extras.tone ?? 'dark'} onInteract={chrome.poke}
-        right={extras.right}
+        right={<>{load.state === 'ready' && COMIC_FORMATS.includes(load.book.format) && (
+          <ModeMenu mode={mode} onChange={async (m) => {
+            const b = await libraryStore().getState().update(load.book.id, { modeOverride: m })
+            await saver.flush()
+            const initial = await loadProgress(records, bookId)
+            setLoad({ ...load, book: b, initial: initial ?? undefined })
+          }} />
+        )}{extras.right}</>}
         bottom={load.state === 'ready' ? <>{extras.bottom}<span className="reader-progress" data-testid="reader-progress">{label}</span></> : undefined} />
     </motion.div>
   )

@@ -3,8 +3,8 @@ import type { ReaderModeProps } from '../types'
 import { usePages } from './usePages'
 
 const parse = (loc?: string) => {
-  const m = loc?.match(/^scroll:(\d+):([\d.]+)/)
-  return m ? { page: Number(m[1]), frac: Number(m[2]) } : { page: 0, frac: 0 }
+  const m = loc?.match(/^(?:scroll|page):(\d+):?([\d.]*)/) // also accepts the paged reader's position
+  return m ? { page: Number(m[1]), frac: Number(m[2] || 0) } : { page: 0, frac: 0 }
 }
 
 /** One continuous vertical strip. Pages near the screen are decoded; the rest are sized placeholders. */

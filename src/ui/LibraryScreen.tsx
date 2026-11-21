@@ -1,10 +1,12 @@
-import { motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { requestPersistence } from '../storage/persist'
 import { bridge } from '../storage/types'
 import { summarize, useLibrary } from '../state/library'
 import { BookCard } from './BookCard'
+import { BookActions } from './BookActions'
+import type { BookRecord } from '../library/types'
 import { DropZone } from './DropZone'
 import { ImportButton } from './ImportButton'
 import { SettingsSheet } from './SettingsSheet'
@@ -17,6 +19,8 @@ export function LibraryScreen() {
   })))
   const [toast, setToast] = useState<{ msg: string; tone: 'ok' | 'warn' } | null>(null)
   const [settings, setSettings] = useState(false)
+  const [actionsFor, setActionsFor] = useState<BookRecord | null>(null)
+  const closeActions = useCallback(() => setActionsFor(null), [])
   const reduce = useReducedMotion()
   useEffect(() => { void load() }, [load])
 
@@ -72,13 +76,14 @@ export function LibraryScreen() {
 
       {books.length > 0 && (
         <section className="shelf" aria-label="Books">
-          {books.map((b, i) => <BookCard key={b.id} book={b} index={i} />)}
+          <AnimatePresence initial={false}>{books.map((b, i) => <BookCard key={b.id} book={b} index={i} onActions={(b) => { setToast(null); setActionsFor(b) }} />)}</AnimatePresence>
         </section>
       )}
 
       <DropZone onFiles={onFiles} />
       <Toast message={toast?.msg ?? null} tone={toast?.tone ?? 'ok'} onDone={clearToast} />
       <SettingsSheet open={settings} onClose={closeSettings} />
+      <BookActions book={actionsFor} onClose={closeActions} />
     </>
   )
 }
