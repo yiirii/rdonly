@@ -113,4 +113,17 @@ writeFileSync(`${out}/book.mobi`, strToU8('BOOKMOBI' + '\0'.repeat(64)))
   mkdirSync(f, { recursive: true })
   ;(['10.png', '2.png', '1.png'] as const).forEach((n, i) => writeFileSync(`${f}/${n}`, png(60, 90, [30 * i, 90, 160])))
 }
+// A comic whose second page is damaged (its compressed bytes are overwritten).
+{
+  const z = zip({ '1.png': png(60, 90, [90, 160, 90]), '2.png': png(60, 90, [160, 90, 90]), '3.png': png(60, 90, [90, 90, 160]) })
+  const name = new TextEncoder().encode('2.png')
+  for (let i = 0; i < z.length - 30; i++) {
+    if (z[i] === 0x50 && z[i + 1] === 0x4b && z[i + 2] === 3 && z[i + 3] === 4 && name.every((b, k) => z[i + 30 + k] === b)) {
+      const data = i + 30 + (z[i + 26] | (z[i + 27] << 8)) + (z[i + 28] | (z[i + 29] << 8))
+      for (let k = 0; k < 8; k++) z[data + k] = 0xff
+      break
+    }
+  }
+  writeFileSync(`${out}/damaged-page.cbz`, z)
+}
 console.log('fixtures written')
