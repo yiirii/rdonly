@@ -141,17 +141,23 @@ Test fixtures: small generated EPUB, PDF, CBZ/CBR/CB7 (manga with ComicInfo, a t
 
 ## 11. Build order (small, shippable increments)
 
-1. **v0.1 Shell + library** — Electron + PWA shells, storage adapters, import EPUB/PDF/CBZ, covers, grid. Deployed to Pages; first installer.
-2. **v0.2 Comic viewer** — manga/comic/webtoon modes, tags + auto-detect, CBR/CB7/folders.
-3. **v0.3 Sync** — Firebase auth, records sync, offline queue, ghost cards, relink, Settings → Account & Sync. (Early, because it's the part that matters most.)
-4. **v0.4 Novel reader + themes + fonts + page-turn styles.**
-5. **v0.5 PDF mode.**
-6. **v0.6 Series stacks, collections, search/sort.**
-7. **v0.7 Bookmarks, highlights, notes.**
-8. **v0.8 Wins** — finishes, daily goal, streak, stats.
-9. **v0.9 Polish** — sound, haptics, persistence warnings, backups/export, performance pass.
+Revised 2026-11-22 after v0.1 shipped (Justin left the order to me): reading comes first, since v0.1 can't open books.
 
-## 12. Needed from Justin before v0.3
+1. **v0.1 Shell + library** — shipped.
+2. **v0.2 Open every book** — reader for all five modes (novel with a starter set of themes/fonts, manga, webtoon, comic, PDF), remembers your place, CBR/CB7/image folders, per-book mode override, edit and delete books.
+3. **v0.3 Themes & fonts** — the full reading-theme set, all bundled fonts, size/spacing/margin/justify/hyphenation controls with live preview, page-turn styles (Slide, Fold, Scroll), default mode per tag.
+4. **v0.4 Organisation + library look & feel** — series stacks, collections, search, tag filter, sort options, Continue Reading row, library redesign pass.
+5. **v0.5 Sync** — Firebase auth, records sync, offline queue, ghost cards, Settings → Account & Sync.
+6. **v0.6 Bookmarks, highlights, notes.**
+7. **v0.7 Wins** — finishes, daily goal, streak, stats.
+8. **v0.8 Polish** — sound, haptics, backups/export, performance pass.
+
+### 11.1 Editing and deleting books (added for v0.2)
+- Long-press (phone) or right-click (laptop) a cover → action sheet: **Edit details**, **Change type**, **Delete**.
+- Edit details: title, author, series, volume. Change type: Novel / Manga / Webtoon / Comic / Document (also sets the default reading mode).
+- Delete asks once ("Delete *Title*? This removes the book and your place in it.") and then removes the file, tombstones the `books` record and its `progress` record so the delete syncs later.
+
+## 12. Needed from Justin before sync (v0.5)
 
 - A Firebase project (I'll walk you through creating it and pasting the web config).
 - The GitHub repo name for Pages (I can create it if `gh` is signed in to your account).
