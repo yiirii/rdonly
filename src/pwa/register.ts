@@ -1,5 +1,6 @@
 import { bridge } from '../storage/types'
-import { defaultIsCalm, startUpdater } from './updater'
+import { startUpdater } from './updater'
+import { appIsCalm } from '../state/calm'
 
 declare const __APP_VERSION__: string
 export const APP_VERSION = __APP_VERSION__
@@ -16,7 +17,7 @@ export function setupPwa() {
       const res = await fetch(`${import.meta.env.BASE_URL}version.json`, { cache: 'no-store' })
       return ((await res.json()) as { version: string }).version
     },
-    isCalm: defaultIsCalm,
+    isCalm: () => appIsCalm(),
     reload: () => { void (reg?.update() ?? Promise.resolve()).finally(() => location.reload()) },
   })
 }

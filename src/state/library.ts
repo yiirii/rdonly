@@ -24,19 +24,27 @@ const sorters: Record<SortKey, (a: BookRecord, b: BookRecord) => number> = {
 const sorted = (all: BookRecord[], s: SortKey) => [...all].sort(sorters[s])
 
 export function createLibraryStore(deps: ImportDeps) {
+  let queue: Promise<unknown> = Promise.resolve()
+  let pending = 0
   return createStore<LibraryState>()((set, get) => ({
     loaded: false, all: [], books: [], sort: 'recent', busy: false,
     async load() {
       const all = await deps.records.list<BookRecord>('books')
       set({ all, books: sorted(all, get().sort), loaded: true })
     },
-    async import(files) {
+    /** Imports are queued: a drop during an import waits its turn instead of running alongside. */
+    import(files) {
+      pending++
       set({ busy: true })
-      try {
-        const results = await importFiles(files.map((f) => ({ name: f.name, read: async () => new Uint8Array(await f.arrayBuffer()) })), deps)
-        await get().load()
-        return results
-      } finally { set({ busy: false }) }
+      const run = queue.then(async () => {
+        try {
+          const results = await importFiles(files.map((f) => ({ name: f.name, read: async () => new Uint8Array(await f.arrayBuffer()) })), deps)
+          await get().load()
+          return results
+        } finally { if (--pending === 0) set({ busy: false }) }
+      })
+      queue = run.catch(() => {})
+      return run
     },
     setSort(sort) { set({ sort, books: sorted(get().all, sort) }) },
   }))
