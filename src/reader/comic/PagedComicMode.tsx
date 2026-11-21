@@ -5,6 +5,7 @@ import { modeFor } from '../modes'
 import type { ReaderModeProps } from '../types'
 import { buildSpreads, spreadFor } from './layout'
 import { usePages } from './usePages'
+import { useZoomPan } from '../gestures/useZoomPan'
 
 const pageFrom = (locator?: string) => { const m = locator?.match(/^page:(\d+)/); return m ? Number(m[1]) : 0 }
 
@@ -64,27 +65,23 @@ export function PagedComicMode({ book, file, initial, onProgress, chrome }: Read
     return () => window.removeEventListener('keydown', key)
   }, [go, rtl])
 
-  // Wheel turns pages on the laptop (Ctrl+wheel is left for zoom).
+  // Gestures: outer thirds turn (mirrored for manga), middle toggles the bars, swipes turn,
+  // double-tap / pinch / Ctrl+wheel zoom, plain wheel turns pages on the laptop.
   const wheelAt = useRef(0)
-  const onWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || Math.abs(e.deltaY) < 20 || performance.now() - wheelAt.current < 350) return
-    wheelAt.current = performance.now(); go(e.deltaY > 0 ? 1 : -1)
-  }
-
-  // Taps: outer thirds turn (mirrored for manga), middle toggles the bars. Swipes turn too.
-  const down = useRef<{ x: number; y: number } | null>(null)
-  const onPointerDown = (e: React.PointerEvent) => { down.current = { x: e.clientX, y: e.clientY } }
-  const onPointerUp = (e: React.PointerEvent) => {
-    const d = down.current; down.current = null
-    if (!d) return
-    const dx = e.clientX - d.x, dy = e.clientY - d.y
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { go((dx < 0) !== rtl ? 1 : -1); return }
-    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) return
-    const third = e.clientX / window.innerWidth
-    if (third < 1 / 3) go(rtl ? 1 : -1)
-    else if (third > 2 / 3) go(rtl ? -1 : 1)
-    else chrome.toggle()
-  }
+  const zoom = useZoomPan({
+    resetKey: idx,
+    onTap: (x) => {
+      const third = x / window.innerWidth
+      if (third < 1 / 3) go(rtl ? 1 : -1)
+      else if (third > 2 / 3) go(rtl ? -1 : 1)
+      else chrome.toggle()
+    },
+    onSwipe: (dx) => go((dx < 0) !== rtl ? 1 : -1),
+    onWheel: (e) => {
+      if (Math.abs(e.deltaY) < 20 || performance.now() - wheelAt.current < 350) return
+      wheelAt.current = performance.now(); go(e.deltaY > 0 ? 1 : -1)
+    },
+  })
 
   // New pages slide in from the side you're reading towards.
   const enterFrom = dir * (rtl ? -1 : 1)
@@ -96,8 +93,8 @@ export function PagedComicMode({ book, file, initial, onProgress, chrome }: Read
 
   if (failed) return <div className="reader-note comic-error"><h2>This comic couldn’t be opened</h2><p>The file may be damaged. Try importing it again.</p></div>
   return (
-    <div className="comic" data-testid="comic" data-dir={rtl ? 'rtl' : 'ltr'}
-      onPointerDown={onPointerDown} onPointerUp={onPointerUp} onWheel={onWheel}>
+    <div className="comic" data-testid="comic" data-dir={rtl ? 'rtl' : 'ltr'} ref={zoom.ref} {...zoom.handlers}>
+      <div className="comic-zoom" data-testid="comic-zoom" style={zoom.style}>
       <AnimatePresence initial={false} custom={enterFrom}>
         {ready && (
           <SpreadFrame key={idx} double={spread.length > 1} rtl={rtl} custom={enterFrom} variants={variants}>
@@ -117,6 +114,7 @@ export function PagedComicMode({ book, file, initial, onProgress, chrome }: Read
           </SpreadFrame>
         )}
       </AnimatePresence>
+      </div>
     </div>
   )
 }

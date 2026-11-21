@@ -171,3 +171,4 @@ button.book:focus-visible .book-cover { outline: 2px solid var(--accent); outlin
 .page-error { box-shadow: inset 0 1px 0 var(--edge); }
 .page-error span { color: var(--text-dim); font-size: 14px; padding: 0 20px; text-align: center; }
 .page-loading { background: #121316; }
+.comic-zoom { position: absolute; inset: 0; will-change: transform; }
