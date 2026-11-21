@@ -5,6 +5,7 @@ import type { ReaderModeProps } from '../types'
 
 const parse = (loc?: string) => { const m = loc?.match(/^page:(\d+):?([\d.]*)/); return m ? { page: Number(m[1]), frac: Number(m[2] || 0) } : { page: 0, frac: 0 } }
 const GAP = 12
+const MAX_PIXELS = 4_800_000
 
 /** Documents: one continuous column of pages, fit to width, drawn only near the screen. */
 export function PdfMode({ file, initial, onProgress, chrome, onError }: ReaderModeProps) {
@@ -82,6 +83,7 @@ export function PdfMode({ file, initial, onProgress, chrome, onError }: ReaderMo
     return () => el.removeEventListener('wheel', wheel)
   }, [])
   const pinch = useRef<{ d: number; z: number } | null>(null)
+  const [pinchScale, setPinchScale] = useState(1) // live pinch is a transform; pages re-render once at the end
   const touches = useRef(new Map<number, { x: number; y: number }>())
   const tap = useRef<{ x: number; y: number; at: number } | null>(null)
   const lastTap = useRef(0)
@@ -103,12 +105,18 @@ export function PdfMode({ file, initial, onProgress, chrome, onError }: ReaderMo
         touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
         if (pinch.current && touches.current.size === 2) {
           const [a, b] = [...touches.current.values()]
-          setZoom(Math.min(3, Math.max(1, pinch.current.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.d)))
+          const z = Math.min(3, Math.max(1, pinch.current.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.current.d))
+          setPinchScale(z / pinch.current.z)
         }
       }}
       onPointerUp={(e) => {
         touches.current.delete(e.pointerId)
-        if (touches.current.size < 2) pinch.current = null
+        if (touches.current.size < 2 && pinch.current) {
+          const z = pinch.current.z * pinchScale
+          pinch.current = null; setPinchScale(1); setZoom(Math.min(3, Math.max(1, z)))
+          tap.current = null
+          return
+        }
         const t = tap.current; tap.current = null
         if (!t || Math.hypot(e.clientX - t.x, e.clientY - t.y) > 8 || performance.now() - t.at > 350) return
         const now = performance.now()
@@ -116,8 +124,9 @@ export function PdfMode({ file, initial, onProgress, chrome, onError }: ReaderMo
         lastTap.current = now
         setTimeout(() => { if (lastTap.current === now) chrome.toggle() }, 280)
       }}
-      onPointerCancel={(e) => { touches.current.delete(e.pointerId); pinch.current = null }}>
-      <div className="pdf-column" style={{ height: tops[count] ?? '100%', width: pageW || '100%' }}>
+      onPointerCancel={(e) => { touches.current.delete(e.pointerId); if (pinch.current) { pinch.current = null; setPinchScale(1) } tap.current = null }}>
+      <div className="pdf-column" style={{ height: tops[count] ?? '100%', width: pageW || '100%',
+        transform: pinchScale !== 1 ? `scale(${pinchScale})` : undefined, transformOrigin: 'top center' }}>
         {doc && Array.from({ length: count }, (_, i) => (
           <div key={i} className="pdf-page" data-testid="pdf-page" data-page={i} style={{ top: tops[i], height: heights[i] }}>
             {near.has(i) && pageW > 0 && <PdfCanvas doc={doc} index={i} width={pageW}
@@ -138,14 +147,19 @@ function PdfCanvas({ doc, index, width, onRatio }: { doc: PDFDocumentProxy; inde
       if (cancelled || !ref.current) return
       const base = page.getViewport({ scale: 1 })
       onRatio(base.height / base.width)
+      // Sharp on screen, but never more than ~5 MP per page (iOS caps total canvas memory).
       const dpr = Math.min(window.devicePixelRatio || 1, 3)
-      const vp = page.getViewport({ scale: (width / base.width) * dpr })
+      let scale = (width / base.width) * dpr
+      const px = base.width * base.height * scale * scale
+      if (px > MAX_PIXELS) scale *= Math.sqrt(MAX_PIXELS / px)
+      const vp = page.getViewport({ scale })
       const c = ref.current
       c.width = Math.round(vp.width); c.height = Math.round(vp.height)
       task = page.render({ canvas: c, canvasContext: c.getContext('2d')!, viewport: vp })
       task.promise.catch(() => {})
     })
-    return () => { cancelled = true; task?.cancel() }
+    const c = ref.current
+    return () => { cancelled = true; task?.cancel(); if (c) { c.width = 0; c.height = 0 } } // frees the memory right away on iOS
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc, index, width])
   return <canvas ref={ref} />

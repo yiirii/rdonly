@@ -50,3 +50,16 @@ test('Ctrl + wheel zooms', async ({ page }) => {
   const after = await page.locator('[data-testid="pdf-page"][data-page="0"]').boundingBox()
   expect(after!.width).toBeGreaterThan(before!.width * 1.3)
 })
+
+test('zooming in keeps each drawn page within a safe memory size', async ({ page }) => {
+  test.skip(test.info().project.name !== 'laptop')
+  await open(page)
+  await page.mouse.move(700, 400)
+  await page.keyboard.down('Control')
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, -400)
+  await page.keyboard.up('Control')
+  await page.waitForTimeout(800)
+  expect(Number(await page.getByTestId('pdf').getAttribute('data-zoom'))).toBeGreaterThan(2.5)
+  const px = await page.locator('[data-testid="pdf-page"] canvas').evaluateAll((cs) => cs.map((c) => (c as HTMLCanvasElement).width * (c as HTMLCanvasElement).height))
+  expect(Math.max(...px)).toBeLessThanOrEqual(5_000_000)
+})
