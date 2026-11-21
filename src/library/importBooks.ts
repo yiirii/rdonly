@@ -1,5 +1,6 @@
 import { sha256Hex } from '../core/hash'
-import { detectFormat } from '../core/formats'
+import { COMIC_FORMATS, detectFormat, type BookFormat } from '../core/formats'
+import { looksLikeWebtoon } from '../core/webtoon'
 import { extractMeta } from '../core/metadata'
 import { defaultTag } from '../core/tags'
 import { titleFromFileName } from '../core/title'
@@ -12,6 +13,14 @@ export interface ImportDeps {
   now?: () => number
   /** Turns a cover into a small data URL; injected so it can run without a canvas in tests. */
   thumb?: (cover: Blob) => Promise<string | undefined>
+  /** Sizes of the first pages of a comic, used to spot webtoons; injectable for tests. */
+  pageSizes?: (format: BookFormat, bytes: Uint8Array) => Promise<{ w: number; h: number }[]>
+}
+
+const defaultPageSizes = async (format: BookFormat, bytes: Uint8Array) => {
+  if (typeof createImageBitmap !== 'function') return []
+  const { firstPageSizes } = await import('../core/webtoon')
+  return firstPageSizes(new Blob([bytes as unknown as BlobPart]), format)
 }
 
 const defaultThumb = async (cover: Blob) => {
@@ -52,9 +61,13 @@ async function importOne(name: string, bytes: Uint8Array, deps: ImportDeps): Pro
   let coverThumb: string | undefined
   if (meta.cover) { try { coverThumb = await (deps.thumb ?? defaultThumb)(meta.cover) } catch { /* placeholder cover is fine */ } }
 
+  let tag = defaultTag(format, meta)
+  if (COMIC_FORMATS.includes(format)) {
+    try { if (looksLikeWebtoon(await (deps.pageSizes ?? defaultPageSizes)(format, bytes))) tag = 'webtoon' } catch { /* keep the default */ }
+  }
   const t = now()
   const rec: BookRecord = {
-    id, updatedAt: t, title: meta.title ?? titleFromFileName(name), format, tag: defaultTag(format, meta),
+    id, updatedAt: t, title: meta.title ?? titleFromFileName(name), format, tag,
     fileName: name, fileSize: bytes.length, addedAt: t,
     ...(meta.author && { author: meta.author }), ...(meta.series && { series: meta.series }),
     ...(meta.volume !== undefined && { volume: meta.volume }), ...(coverThumb && { coverThumb }),

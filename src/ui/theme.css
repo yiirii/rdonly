@@ -172,3 +172,10 @@ button.book:focus-visible .book-cover { outline: 2px solid var(--accent); outlin
 .page-error span { color: var(--text-dim); font-size: 14px; padding: 0 20px; text-align: center; }
 .page-loading { background: #121316; }
 .comic-zoom { position: absolute; inset: 0; will-change: transform; }
+
+/* ---------- webtoon ---------- */
+.webtoon { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; overflow-anchor: none; }
+.webtoon-strip { position: relative; width: min(100%, 760px); margin: 0 auto; }
+.webtoon-page { position: absolute; left: 0; right: 0; background: #101114; }
+.webtoon-page img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; user-select: none; }
+.webtoon-page .page-error { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }

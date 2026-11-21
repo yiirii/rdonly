@@ -126,4 +126,6 @@ writeFileSync(`${out}/book.mobi`, strToU8('BOOKMOBI' + '\0'.repeat(64)))
   }
   writeFileSync(`${out}/damaged-page.cbz`, z)
 }
+// A webtoon: 12 very tall pages.
+writeFileSync(`${out}/webtoon.cbz`, zip(Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`${String(i + 1).padStart(2, '0')}.png`, png(60, 400, [20 * i, 140, 200 - 12 * i])]))))
 console.log('fixtures written')
