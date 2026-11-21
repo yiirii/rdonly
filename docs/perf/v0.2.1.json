@@ -1,0 +1,29 @@
+{
+  "version": "0.2.1",
+  "cpuThrottle": 4,
+  "viewport": "390x844",
+  "cardsEnter": {
+    "frames": 115,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 66.7
+  },
+  "settingsSheet": {
+    "frames": 105,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 33.3
+  },
+  "comicPageTurn": {
+    "frames": 114,
+    "p50": 16.7,
+    "p95": 16.7,
+    "max": 16.8
+  },
+  "novelPageTurn": {
+    "frames": 112,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 16.8
+  }
+}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-11-22
+- **Proper Windows installer:** replaces any older version when you install, keeps your library, and puts a Rd Only icon on the desktop.
+- **Reader bars appear when the mouse nears the top or bottom edge,** and stay while you're over them.
+- **Smoother novel page turns:** a short slide-and-fade on click, tap or arrow key; swipes on the phone still follow your finger.
+- **Series folders:** books with the same Series become one stacked folder showing the count; inside, volumes are in A–Z order.
+- **Import menu** on the laptop: "Books…" or "Folder of images…" (every picture in a folder becomes one comic).
+- New app icon.
+
 ## 0.2.0 — 2026-11-22
 Books open now.
 - Tap a cover to read; the book grows out of its cover. Back (or Escape) returns to the library and your place is saved.
