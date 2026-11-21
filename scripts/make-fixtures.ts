@@ -1,7 +1,10 @@
 // Generates small, deterministic test books into tests/fixtures. Run: npx tsx scripts/make-fixtures.ts
 import { zipSync, strToU8 } from 'fflate'
 import { deflateSync } from 'node:zlib'
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const out = 'tests/fixtures'
 mkdirSync(out, { recursive: true })
@@ -85,4 +88,11 @@ const full = zip({ '1.png': png(60, 90, [1, 2, 3]), '2.png': png(60, 90, [4, 5, 
 writeFileSync(`${out}/broken.cbz`, full.slice(0, Math.floor(full.length / 2)))
 writeFileSync(`${out}/empty.epub`, new Uint8Array())
 writeFileSync(`${out}/book.mobi`, strToU8('BOOKMOBI' + '\0'.repeat(64)))
+// ZIP64 variant (forced with zip -fz) to exercise the 64-bit central directory path.
+{
+  const d = mkdtempSync(join(tmpdir(), 'z64-'))
+  for (const [n, c] of [['1.png', [10, 120, 200]], ['2.png', [200, 120, 10]]] as const) writeFileSync(join(d, n), png(60, 90, c as [number, number, number]))
+  execSync('zip -q -X -fz z64.cbz 1.png 2.png', { cwd: d })
+  writeFileSync(`${out}/zip64.cbz`, readFileSync(join(d, 'z64.cbz')))
+}
 console.log('fixtures written')

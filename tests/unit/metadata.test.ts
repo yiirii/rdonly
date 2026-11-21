@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { extractMeta } from '../../src/core/metadata'
 import { defaultTag } from '../../src/core/tags'
 import { fixture } from './fixtures'
+import { corruptEntry } from './zipUtil'
 
 const bytesOf = async (b?: Blob) => (b ? Array.from(new Uint8Array(await b.arrayBuffer())) : undefined)
 
@@ -52,30 +53,13 @@ describe('defaultTag', () => {
 })
 
 describe('reads only what it needs from the archive', () => {
-  // Corrupt the compressed data of one entry: a full unzip would throw, a selective one must not.
-  const corruptEntry = async (bytes: Uint8Array, name: string) => {
-    const out = bytes.slice()
-    const nameBytes = new TextEncoder().encode(name)
-    for (let i = 0; i < out.length - 30; i++) {
-      if (out[i] === 0x50 && out[i + 1] === 0x4b && out[i + 2] === 3 && out[i + 3] === 4) {
-        const nlen = out[i + 26] | (out[i + 27] << 8), xlen = out[i + 28] | (out[i + 29] << 8)
-        const entry = out.slice(i + 30, i + 30 + nlen)
-        if (entry.length === nameBytes.length && entry.every((b, k) => b === nameBytes[k])) {
-          const data = i + 30 + nlen + xlen
-          for (let k = 0; k < 8; k++) out[data + k] = 0xff
-          return out
-        }
-      }
-    }
-    throw new Error(`entry ${name} not found`)
-  }
   it('CBZ: ignores damage in pages after the cover', async () => {
-    const m = await extractMeta('cbz', await corruptEntry(fixture('manga.cbz'), '3.png'))
+    const m = await extractMeta('cbz', corruptEntry(fixture('manga.cbz'), '3.png'))
     expect(m.series).toBe('Test Manga')
     expect(m.cover?.type).toBe('image/png')
   })
   it('EPUB: ignores damage in chapters', async () => {
-    const m = await extractMeta('epub', await corruptEntry(fixture('novel.epub'), 'OEBPS/ch1.xhtml'))
+    const m = await extractMeta('epub', corruptEntry(fixture('novel.epub'), 'OEBPS/ch1.xhtml'))
     expect(m.title).toBe('Test Novel')
   })
 })
