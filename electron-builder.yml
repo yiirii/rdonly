@@ -1,0 +1,26 @@
+appId: com.justin.rdonly
+productName: Rd Only
+copyright: Justin
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist-electron/**/*
+  - package.json
+extraMetadata:
+  main: dist-electron/main.cjs
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: RdOnly-Setup-${version}.${ext}
+  signAndEditExecutable: true
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Rd Only
+asar: true
+portable:
+  artifactName: RdOnly-${version}-portable.${ext}
