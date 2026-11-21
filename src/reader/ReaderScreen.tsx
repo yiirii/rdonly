@@ -44,6 +44,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
   const records = getRecordStore()
   const saver = useMemo(() => createProgressSaver(records, bookId), [records, bookId])
   const [label, setLabel] = useState('')
+  const [extras, setChromeExtras] = useState<{ right?: React.ReactNode; bottom?: React.ReactNode; tone?: 'light' | 'dark' }>({})
 
   useEffect(() => {
     let alive = true
@@ -95,7 +96,6 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
     : { x: 0, y: 0, scale: 0.92 }
 
   const Mode = MODE_COMPONENTS[mode]
-  const light = load.state === 'ready' && mode === 'novel' // novel themes set their own tone
   const known = book ?? libraryStore().getState().all.find((b) => b.id === bookId)
   const [coverOut, setCoverOut] = useState(false)
   useEffect(() => {
@@ -111,7 +111,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
 
       {load.state === 'ready' && Mode && (
         <motion.div className="reader-stage" initial={{ opacity: 0 }} animate={{ opacity: coverOut ? 1 : 0 }} transition={{ duration: 0.22 }}>
-          <Mode book={load.book} file={load.file} initial={load.initial} onProgress={onProgress} chrome={chrome} />
+          <Mode book={load.book} file={load.file} initial={load.initial} onProgress={onProgress} chrome={chrome} setChromeExtras={setChromeExtras} />
         </motion.div>
       )}
       {load.state === 'ready' && !Mode && coverOut && (
@@ -135,8 +135,9 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         )}
       </AnimatePresence>
 
-      <ReaderChrome visible={chrome.visible || load.state !== 'ready'} title={known?.title ?? ''} onBack={closeReader} tone={light ? 'light' : 'dark'}
-        bottom={load.state === 'ready' ? <span className="reader-progress" data-testid="reader-progress">{label}</span> : undefined} />
+      <ReaderChrome visible={chrome.visible || load.state !== 'ready'} title={known?.title ?? ''} onBack={closeReader} tone={extras.tone ?? 'dark'} onInteract={chrome.poke}
+        right={extras.right}
+        bottom={load.state === 'ready' ? <>{extras.bottom}<span className="reader-progress" data-testid="reader-progress">{label}</span></> : undefined} />
     </motion.div>
   )
 }

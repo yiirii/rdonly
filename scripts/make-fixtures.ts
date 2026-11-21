@@ -128,4 +128,31 @@ writeFileSync(`${out}/book.mobi`, strToU8('BOOKMOBI' + '\0'.repeat(64)))
 }
 // A webtoon: 12 very tall pages.
 writeFileSync(`${out}/webtoon.cbz`, zip(Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`${String(i + 1).padStart(2, '0')}.png`, png(60, 400, [20 * i, 140, 200 - 12 * i])]))))
+// A long novel: 3 chapters of deterministic generated prose, with a navigation TOC.
+{
+  const words = 'the river ran past quiet houses where lamps burned late and somebody always kept a kettle warm for travellers who came in from the rain with stories about the hills and the long road north'.split(' ')
+  let seed = 7
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648
+  const para = () => { const n = 60 + Math.floor(rnd() * 60); const w = Array.from({ length: n }, () => words[Math.floor(rnd() * words.length)]); w[0] = w[0][0].toUpperCase() + w[0].slice(1); return `<p>${w.join(' ')}.</p>` }
+  const chapter = (i: number) => strToU8(`<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${i}</title></head><body><h1>Chapter ${i}</h1>${Array.from({ length: 30 }, para).join('')}</body></html>`)
+  const nav = strToU8('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><ol><li><a href="c1.xhtml">Chapter 1</a></li><li><a href="c2.xhtml">Chapter 2</a></li><li><a href="c3.xhtml">Chapter 3</a></li></ol></nav></body></html>')
+  const opf = strToU8('<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>The Long Road</dc:title><dc:creator>R. Walker</dc:creator><dc:language>en</dc:language><dc:identifier id="uid">urn:uuid:00000000-0000-0000-0000-000000000002</dc:identifier><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/><item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/><item id="c3" href="c3.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/><itemref idref="c3"/></spine></package>')
+  writeFileSync(`${out}/long.epub`, zip({
+    mimetype: strToU8('application/epub+zip'),
+    'META-INF/container.xml': strToU8('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'),
+    'OEBPS/content.opf': opf, 'OEBPS/nav.xhtml': nav, 'OEBPS/c1.xhtml': chapter(1), 'OEBPS/c2.xhtml': chapter(2), 'OEBPS/c3.xhtml': chapter(3),
+  }, 'mimetype'))
+}
+// A fixed-layout EPUB with two image pages.
+{
+  const page = (i: number) => strToU8(`<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>${i}</title><meta name="viewport" content="width=600, height=900"/></head><body style="margin:0"><img src="p${i}.png" style="width:600px;height:900px" alt=""/></body></html>`)
+  const opf = strToU8('<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Picture Book</dc:title><dc:language>en</dc:language><dc:identifier id="uid">urn:uuid:00000000-0000-0000-0000-000000000003</dc:identifier><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta><meta property="rendition:layout">pre-paginated</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="p1" href="p1.xhtml" media-type="application/xhtml+xml"/><item id="p2" href="p2.xhtml" media-type="application/xhtml+xml"/><item id="i1" href="p1.png" media-type="image/png"/><item id="i2" href="p2.png" media-type="image/png"/></manifest><spine><itemref idref="p1"/><itemref idref="p2"/></spine></package>')
+  const nav = strToU8('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><ol><li><a href="p1.xhtml">Start</a></li></ol></nav></body></html>')
+  writeFileSync(`${out}/fixed.epub`, zip({
+    mimetype: strToU8('application/epub+zip'),
+    'META-INF/container.xml': strToU8('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'),
+    'OEBPS/content.opf': opf, 'OEBPS/nav.xhtml': nav, 'OEBPS/p1.xhtml': page(1), 'OEBPS/p2.xhtml': page(2),
+    'OEBPS/p1.png': png(60, 90, [200, 120, 80]), 'OEBPS/p2.png': png(60, 90, [80, 120, 200]),
+  }, 'mimetype'))
+}
 console.log('fixtures written')
