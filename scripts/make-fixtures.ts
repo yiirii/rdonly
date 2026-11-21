@@ -155,4 +155,28 @@ writeFileSync(`${out}/webtoon.cbz`, zip(Object.fromEntries(Array.from({ length: 
     'OEBPS/p1.png': png(60, 90, [200, 120, 80]), 'OEBPS/p2.png': png(60, 90, [80, 120, 200]),
   }, 'mimetype'))
 }
+// A 30-page PDF with the page number drawn large on each page.
+{
+  const n = 30
+  const objs: string[] = []
+  const add = (o: string) => { objs.push(o); return objs.length }
+  const catalog = add('<< /Type /Catalog /Pages 2 0 R >>')
+  add('PAGES') // placeholder, filled below
+  const font = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
+  const kids: number[] = []
+  for (let i = 1; i <= n; i++) {
+    const s = `0.93 0.91 0.86 rg 0 0 420 595 re f 0.15 0.14 0.12 rg BT /F1 72 Tf 150 300 Td (${i}) Tj ET BT /F1 14 Tf 40 540 Td (Long document) Tj ET`
+    const content = add(`<< /Length ${s.length} >>\nstream\n${s}\nendstream`)
+    kids.push(add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 420 595] /Contents ${content} 0 R /Resources << /Font << /F1 ${font} 0 R >> >> >>`))
+  }
+  objs[1] = `<< /Type /Pages /Kids [${kids.map((k) => `${k} 0 R`).join(' ')}] /Count ${n} >>`
+  const info = add('<< /Title (Long Document) /Author (P. Author) >>')
+  let body = '%PDF-1.4\n'
+  const offsets: number[] = []
+  objs.forEach((o, i) => { offsets.push(body.length); body += `${i + 1} 0 obj\n${o}\nendobj\n` })
+  const xref = body.length
+  body += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`
+  body += `trailer\n<< /Size ${objs.length + 1} /Root ${catalog} 0 R /Info ${info} 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  writeFileSync(`${out}/long.pdf`, strToU8(body))
+}
 console.log('fixtures written')

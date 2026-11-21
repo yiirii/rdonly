@@ -2,9 +2,7 @@ import type { BookMeta } from './types'
 
 /** Browser-only: pdf.js is loaded lazily so the library screen stays light. */
 export async function pdfMeta(bytes: Uint8Array): Promise<BookMeta> {
-  const pdfjs = await import('pdfjs-dist')
-  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
+  const pdfjs = await (await import('../../archive/pdfjs')).pdfjs()
   const task = pdfjs.getDocument({ data: bytes.slice() })
   const doc = await task.promise
   try {
