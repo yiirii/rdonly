@@ -19,7 +19,10 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  # Installing a newer version runs the old version's uninstaller first (same appId).
+  deleteAppDataOnUninstall: false
   shortcutName: Rd Only
 asar: true
 portable:

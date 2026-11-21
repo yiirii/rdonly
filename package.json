@@ -13,8 +13,8 @@
     "e2e": "playwright test",
     "electron:build": "node scripts/build-electron.mjs",
     "electron:dev": "npm run build && npm run electron:build && electron .",
-    "dist:win": "npm run electron:build && electron-builder --win nsis",
-    "dist:win:portable": "npm run electron:build && electron-builder --win portable -c.win.signAndEditExecutable=false",
+    "dist:win": "npm run electron:build && electron-builder --win nsis --publish never",
+    "dist:win:portable": "npm run electron:build && electron-builder --win portable --publish never -c.win.signAndEditExecutable=false",
     "e2e:electron": "npm run electron:build && xvfb-run -a playwright test --project=electron"
   },
   "dependencies": {
