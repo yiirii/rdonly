@@ -3,8 +3,14 @@ const VERSION = '__VERSION__'
 const CACHE = `rdonly-${VERSION}`
 const PRECACHE = __PRECACHE__
 
+// A new worker waits until the page asks it to take over (at a calm moment, right before reloading),
+// so an open page never loses the cached chunks it was built with.
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE.map((p) => new Request(p, { cache: 'reload' })))).then(() => self.skipWaiting()))
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE.map((p) => new Request(p, { cache: 'reload' })))))
+})
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting()
 })
 
 self.addEventListener('activate', (e) => {
@@ -22,9 +28,9 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(fetch(req, { cache: 'no-store' }))
     return
   }
-  // Pages: network first so updates land, cached shell when offline.
+  // Pages: network first (revalidated, never a stale HTTP-cached copy), cached shell when offline.
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then((res) => {
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then((res) => {
       const copy = res.clone()
       if (res.ok) void caches.open(CACHE).then((c) => c.put('./', copy))
       return res

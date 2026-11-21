@@ -70,3 +70,30 @@ describe('isCalm', () => {
     expect(defaultIsCalm()).toBe(false)
   })
 })
+
+describe('reload guard', () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] }))
+  afterEach(() => vi.useRealTimers())
+  it('reloads at most once for the same new version (no loop if the page comes back stale)', async () => {
+    const tried = new Set<string>()
+    const opts = (reload: () => void) => ({
+      currentVersion: '0.1.0', fetchVersion: async () => '0.1.1', isCalm: () => true, reload,
+      alreadyTried: (v: string) => tried.has(v), markTried: (v: string) => { tried.add(v) },
+    })
+    const r1 = vi.fn(); const stop1 = startUpdater(opts(r1)); await flush(); await flush(); stop1()
+    const r2 = vi.fn(); const stop2 = startUpdater(opts(r2)); await flush(); await flush(); stop2()
+    expect(r1).toHaveBeenCalledTimes(1)
+    expect(r2).not.toHaveBeenCalled()
+  })
+})
+
+describe('service worker template', () => {
+  it('fetches pages bypassing the HTTP cache and waits for a calm moment to take over', async () => {
+    const { readFileSync } = await import('node:fs')
+    const sw = readFileSync('src/pwa/sw-template.js', 'utf8')
+    expect(sw).toMatch(/req\.mode === 'navigate'[\s\S]*fetch\(req, \{ cache: 'no-cache' \}\)/)
+    const install = sw.match(/addEventListener\('install'[\s\S]*?\n\}\)/)![0]
+    expect(install).not.toContain('skipWaiting') // no takeover while an old page may still need its chunks
+    expect(sw).toMatch(/SKIP_WAITING[\s\S]*skipWaiting\(\)/)
+  })
+})

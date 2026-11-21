@@ -7,6 +7,9 @@ export interface UpdaterOptions {
   intervalMs?: number
   /** how often to re-check for a calm moment once an update is waiting; default 2 s */
   calmPollMs?: number
+  /** Guard against reload loops: has a reload for this version already been tried this session? */
+  alreadyTried?: (version: string) => boolean
+  markTried?: (version: string) => void
 }
 
 export function isNewer(current: string, remote: string): boolean {
@@ -29,17 +32,21 @@ export function defaultIsCalm(): boolean {
 export function startUpdater(o: UpdaterOptions): () => void {
   let waiting: ReturnType<typeof setInterval> | undefined
   let done = false
+  let target = ''
   const tryReload = () => {
     if (done || !o.isCalm()) return
     done = true
     if (waiting) clearInterval(waiting)
+    o.markTried?.(target)
     o.reload()
   }
   const check = async () => {
     if (done || waiting) return
     try {
-      if (!isNewer(o.currentVersion, (await o.fetchVersion()).trim())) return
+      target = (await o.fetchVersion()).trim()
+      if (!isNewer(o.currentVersion, target)) return
     } catch { return } // offline or server hiccup: try again later
+    if (o.alreadyTried?.(target)) return
     tryReload()
     if (!done) waiting = setInterval(tryReload, o.calmPollMs ?? 2000)
   }
