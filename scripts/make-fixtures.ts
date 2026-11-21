@@ -147,6 +147,13 @@ writeFileSync(`${out}/webtoon.cbz`, zip(Object.fromEntries(Array.from({ length: 
   const chapter = (i: number) => strToU8(`<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${i}</title></head><body><h1>Chapter ${i}</h1>${Array.from({ length: 30 }, para).join('')}</body></html>`)
   const nav = strToU8('<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><ol><li><a href="c1.xhtml">Chapter 1</a></li><li><a href="c2.xhtml">Chapter 2</a></li><li><a href="c3.xhtml">Chapter 3</a></li></ol></nav></body></html>')
   const opf = strToU8('<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>The Long Road</dc:title><dc:creator>R. Walker</dc:creator><dc:language>en</dc:language><dc:identifier id="uid">urn:uuid:00000000-0000-0000-0000-000000000002</dc:identifier><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/><item id="c2" href="c2.xhtml" media-type="application/xhtml+xml"/><item id="c3" href="c3.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/><itemref idref="c3"/></spine></package>')
+  // Right-to-left copy (e.g. Japanese novels): same text, spine read right to left.
+  writeFileSync(`${out}/rtl.epub`, zip({
+    mimetype: strToU8('application/epub+zip'),
+    'META-INF/container.xml': strToU8('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'),
+    'OEBPS/content.opf': strToU8(new TextDecoder().decode(opf).replace('<spine>', '<spine page-progression-direction="rtl">').replace('The Long Road', 'Right to Left').replace('-000000000002', '-000000000004')),
+    'OEBPS/nav.xhtml': nav, 'OEBPS/c1.xhtml': chapter(1), 'OEBPS/c2.xhtml': chapter(2), 'OEBPS/c3.xhtml': chapter(3),
+  }, 'mimetype'))
   writeFileSync(`${out}/long.epub`, zip({
     mimetype: strToU8('application/epub+zip'),
     'META-INF/container.xml': strToU8('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'),

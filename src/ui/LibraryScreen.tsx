@@ -33,6 +33,12 @@ export function LibraryScreen() {
   const folder = seriesOpen ? items.find((i) => i.kind === 'series' && i.key === seriesKeyOpen) : undefined
   // The folder was emptied (or no longer has 2+ books): go back to the library.
   useEffect(() => { if (loaded && route.name === 'series' && !folder) closeSeries() }, [loaded, route.name, folder])
+  useEffect(() => {
+    if (route.name !== 'series') return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"], [role="menu"]')) closeSeries() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [route.name])
 
   const onFiles = useCallback(async (files: File[]) => {
     if (!bridge()) void requestPersistence()

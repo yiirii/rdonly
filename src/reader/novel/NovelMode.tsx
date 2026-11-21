@@ -44,9 +44,9 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   const glide = useRef(createGlide(() => host.current, () => matchMedia('(prefers-reduced-motion: reduce)').matches)).current
   /** Taps, keys and clicks glide; touch swipes keep foliate's own finger-following scroll. */
   const turn = (v: FoliateView, side: 'left' | 'right') => {
-    const rtl = getComputedStyle(v).direction === 'rtl' || (v as unknown as { book?: { dir?: string } }).book?.dir === 'rtl'
-    const forward = side === 'right' ? !rtl : rtl
-    return glide(forward ? 1 : -1, () => (side === 'left' ? v.goLeft() : v.goRight()))
+    v.renderer.removeAttribute('animated') // a tap is never a swipe: no hidden scroll animation under the glide
+    // The motion follows the side you pressed (works the same for right-to-left books).
+    return glide(side === 'right' ? 1 : -1, () => (side === 'left' ? v.goLeft() : v.goRight()))
   }
   const turnRef = useRef(turn); turnRef.current = turn
 
@@ -91,10 +91,15 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
         })
         doc.addEventListener('keydown', (ev) => keyNav(ev, v, (side) => turnRef.current(v, side), true)) // keys pressed inside the book's frame
         // Swipes: let foliate animate the finger-following scroll and its snap.
-        doc.addEventListener('touchstart', () => v.renderer.setAttribute('animated', ''), { passive: true })
+        let touchX = 0
+        doc.addEventListener('touchstart', (ev) => { touchX = ev.touches[0]?.clientX ?? 0 }, { passive: true })
+        doc.addEventListener('touchmove', (ev) => {
+          if (Math.abs((ev.touches[0]?.clientX ?? touchX) - touchX) > 8) v.renderer.setAttribute('animated', '')
+        }, { passive: true })
         doc.addEventListener('touchend', () => setTimeout(() => v.renderer.removeAttribute('animated'), 450), { passive: true })
         // Mouse moves inside the book's frame don't reach the window: pass the height on for edge reveal.
-        doc.addEventListener('mousemove', (ev) => {
+        doc.addEventListener('pointermove', (ev) => {
+          if (ev.pointerType !== 'mouse') return // phones send fake mouse moves with every tap
           const frame = (doc.defaultView?.frameElement as Element | null)?.getBoundingClientRect()
           if (frame) revealRef.current(frame.top + ev.clientY)
         })

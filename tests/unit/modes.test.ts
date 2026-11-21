@@ -22,3 +22,11 @@ describe('modeFor', () => {
     expect(modeFor({ format: 'cbz', tag: 'manga', modeOverride: 'banana' })).toBe('paged-rtl')
   })
 })
+
+describe('parseRoute', () => {
+  it('falls back to the library on a malformed link', async () => {
+    const { parseRoute } = await import('../../src/state/route')
+    expect(parseRoute('#/series/a%ZZ')).toEqual({ name: 'library' })
+    expect(parseRoute('#/series/AC%2FDC')).toEqual({ name: 'series', key: 'AC/DC' })
+  })
+})

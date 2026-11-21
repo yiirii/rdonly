@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
   issues: write
+concurrency:
+  group: windows-installer
+  cancel-in-progress: false
 jobs:
   installer:
     runs-on: windows-latest

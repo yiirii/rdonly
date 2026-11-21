@@ -59,3 +59,18 @@ test('deleting a volume so only one is left turns the folder back into a book', 
   await expect(page.getByTestId('series-card')).toHaveCount(0)
   await expect(page.getByTestId('book-card')).toHaveCount(1)
 })
+
+test('Escape leaves a series folder on the laptop', async ({ page }) => {
+  test.skip(test.info().project.name !== 'laptop')
+  await page.goto('/')
+  await page.getByTestId('import-input').setInputFiles(['tests/fixtures/manga.cbr', 'tests/fixtures/manga.cb7'])
+  await page.getByTestId('series-card').click()
+  await expect(page.getByTestId('series-screen')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('series-screen')).toHaveCount(0)
+})
+
+test('a broken link opens the library instead of a blank screen', async ({ page }) => {
+  await page.goto('/#/series/a%ZZ')
+  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()
+})

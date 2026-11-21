@@ -20,3 +20,9 @@ describe('Windows installer settings', () => {
     expect(yml).toMatch(/oneClick: false/)
   })
 })
+
+describe('Windows build workflow', () => {
+  it('never runs two installer builds at once (avoids a false failure on quick releases)', () => {
+    expect(readFileSync('.github/workflows/windows.yml', 'utf8')).toMatch(/concurrency:[\s\S]*group: windows-installer/)
+  })
+})

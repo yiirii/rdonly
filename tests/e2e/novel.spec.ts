@@ -112,3 +112,30 @@ test('holding the arrow key never leaves a half-faded page', async ({ page }) =>
   expect(rest).toEqual({ o: '1', t: 'none' })
   expect(await cfi(page)).not.toBe(first)
 })
+
+const hostMotion = (page: Page) => page.locator('.novel-host').evaluate((el) => ({ o: Number(getComputedStyle(el).opacity), x: new DOMMatrix(getComputedStyle(el).transform).e }))
+
+test('the glide follows the side you pressed, even in right-to-left books', async ({ page }) => {
+  await open(page, 'rtl.epub')
+  await page.keyboard.press('ArrowLeft')
+  await page.waitForTimeout(60)
+  expect((await hostMotion(page)).x).toBeGreaterThan(0) // old page leaves to the right
+})
+
+test('on the phone a tap turns the page quickly (no hidden scroll animation)', async ({ page }) => {
+  test.skip(test.info().project.name !== 'iphone')
+  await open(page)
+  const vp = page.viewportSize()!
+  await page.touchscreen.tap(vp.width * 0.9, vp.height / 2)
+  await page.waitForTimeout(380)
+  expect((await hostMotion(page)).o).toBeGreaterThan(0.85)
+})
+
+test('on the phone, tapping near the top or bottom of a novel does not bring the bars up', async ({ page }) => {
+  test.skip(test.info().project.name !== 'iphone')
+  await open(page)
+  await expect(page.getByTestId('reader-back')).toHaveCount(0, { timeout: 6000 })
+  await page.touchscreen.tap(40, 800)
+  await page.waitForTimeout(500)
+  await expect(page.getByTestId('reader-back')).toHaveCount(0)
+})

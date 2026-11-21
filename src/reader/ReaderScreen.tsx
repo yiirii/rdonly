@@ -37,8 +37,8 @@ function useChrome(): ChromeControl {
   const show = useCallback(() => { setVisible(true); arm() }, [arm])
   return useMemo(() => ({
     visible,
-    toggle: () => setVisible((v) => { if (!v) arm(); return !v }),
-    hide: () => setVisible(false),
+    toggle: () => { held.current = false; setVisible((v) => { if (!v) arm(); return !v }) },
+    hide: () => { held.current = false; setVisible(false) },
     poke: () => { if (visible) arm() },
     reveal: (y: number) => { if (y < EDGE_TOP || y > window.innerHeight - EDGE_BOTTOM) show() },
     hold: (on: boolean) => { held.current = on; if (!on) arm() },

@@ -14,7 +14,7 @@ export function createGlide(el: () => HTMLElement | null, reduceMotion: () => bo
       { duration: reduce ? 90 : 110, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' },
     )
     await out.finished.catch(() => {})
-    await turn()
+    try { await turn() } catch (err) { if (my === token) settle(e); throw err }
     if (my !== token) return // a newer turn took over; it owns the animation now
     await new Promise((r) => requestAnimationFrame(() => r(null)))
     if (my !== token) return
