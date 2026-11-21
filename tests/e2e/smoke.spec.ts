@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 
 const GOOD = ['novel.epub', 'bare.epub', 'doc.pdf', 'manga.cbz', 'plain.cbz'].map((n) => `tests/fixtures/${n}`)
+const READS = ['long.epub', 'manga.cbz', 'webtoon.cbz', 'long.pdf', 'manga.cbr']
 
 async function healthy(page: Page, step: string, errors: string[]) {
   await page.waitForTimeout(450) // let transitions settle
@@ -51,4 +52,48 @@ test('every screen and main action, no errors or stuck overlays', async ({ page 
   await page.reload()
   await expect(page.getByTestId('book-card')).toHaveCount(5)
   await healthy(page, 'reload', errors)
+})
+
+test('open every kind of book, turn pages, use every control, leave cleanly', async ({ page }) => {
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('/')
+  await page.getByTestId('import-input').setInputFiles(READS.map((n) => `tests/fixtures/${n}`))
+  await expect(page.getByTestId('book-card')).toHaveCount(READS.length)
+  const vp = page.viewportSize()!
+  for (let i = 0; i < READS.length; i++) {
+    const card = page.getByTestId('book-card').nth(i)
+    const title = await card.getAttribute('aria-label')
+    await card.click()
+    await expect(page.getByTestId('reader')).toBeVisible()
+    await page.waitForTimeout(1200)
+    expect(await page.locator('.reader-note h2').count(), `${title}: error screen`).toBe(0)
+    for (let k = 0; k < 3; k++) { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(250) }
+    await page.mouse.wheel(0, 600); await page.waitForTimeout(250)
+    if (await page.getByTestId('reader-back').count() === 0) await page.mouse.click(vp.width / 2, vp.height / 2)
+    await expect(page.getByTestId('reader-back')).toBeVisible()
+    if (await page.getByTestId('reading-settings-button').count()) {
+      await page.getByTestId('reading-settings-button').click()
+      await page.getByTestId('theme-paper').click()
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+    }
+    if (await page.getByTestId('reader-mode-button').count()) {
+      await page.getByTestId('reader-mode-button').click()
+      await expect(page.getByRole('menu')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('menu')).toHaveCount(0)
+      await expect(page.getByTestId('reader'), 'Escape closed the menu, not the book').toBeVisible()
+    }
+    await page.getByTestId('reader-back').click()
+    await expect(page.getByTestId('reader')).toHaveCount(0)
+    await healthy(page, `read ${title}`, errors)
+  }
+  // long-press actions open and close cleanly
+  const card = page.getByTestId('book-card').first()
+  await card.click({ button: 'right' })
+  await expect(page.getByTestId('book-actions')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await healthy(page, 'book actions', errors)
 })

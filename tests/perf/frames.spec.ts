@@ -38,9 +38,28 @@ test('animation frame times on a 4x-slowed phone', async ({ page }) => {
   await page.waitForTimeout(700)
   const sheet = stats(await stopRecording(page))
 
-  const result = { version: process.env.npm_package_version ?? 'dev', cpuThrottle: 4, viewport: '390x844', cardsEnter: cards, settingsSheet: sheet }
+  // Page turns: comic (transform slide) and novel (foliate paginator).
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+  const turns = async (fixture: string, ready: string) => {
+    await page.getByTestId('import-input').setInputFiles([`tests/fixtures/${fixture}`])
+    await page.getByTestId('book-card').filter({ hasText: fixture === 'long.epub' ? 'The Long Road' : 'plain' }).click()
+    await page.locator(ready).first().waitFor({ timeout: 15000 })
+    await page.waitForTimeout(1200)
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+    await startRecording(page)
+    for (let i = 0; i < 4; i++) { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(450) }
+    const r = stats(await stopRecording(page))
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+    await page.keyboard.press('Escape'); await page.waitForTimeout(500)
+    return r
+  }
+  const comicTurn = await turns('plain.cbz', '[data-testid="comic-page"] img')
+  const novelTurn = await turns('long.epub', '[data-testid="novel"][data-cfi]')
+
+  const result = { version: process.env.npm_package_version ?? 'dev', cpuThrottle: 4, viewport: '390x844', cardsEnter: cards, settingsSheet: sheet, comicPageTurn: comicTurn, novelPageTurn: novelTurn }
   mkdirSync('docs/perf', { recursive: true })
   writeFileSync(process.env.PERF_OUT ?? 'test-results/perf.json', JSON.stringify(result, null, 2))
   console.log(JSON.stringify(result))
   expect(sheet.p95).toBeLessThanOrEqual(24)
+  expect(comicTurn.p95).toBeLessThanOrEqual(24)
 })

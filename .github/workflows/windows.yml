@@ -7,23 +7,39 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  issues: write
 jobs:
   installer:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
-      - run: npm ci
-      - run: npm run dist:win
+      - run: npm ci 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - run: npm run dist:win 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
       - uses: actions/upload-artifact@v4
         with:
           name: RdOnly-installer
           path: release/RdOnly-Setup-*.exe
       - name: Publish a release for this version (once)
-        shell: bash
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           V=v$(node -p "require('./package.json').version")
           if gh release view "$V" >/dev/null 2>&1; then echo "$V already released"; exit 0; fi
           gh release create "$V" release/RdOnly-Setup-*.exe --target "$GITHUB_SHA" --title "Rd Only $V" --notes "Laptop installer for $V. Download RdOnly-Setup and run it."
+      # Build logs need a sign-in to read; a public issue with the tail lets the cause be seen without one.
+      - name: Report the failure as an issue
+        if: failure()
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          {
+            echo "Windows installer build failed for commit $GITHUB_SHA."
+            echo
+            echo '```'
+            tail -n 80 build.log 2>/dev/null || echo "(no log captured)"
+            echo '```'
+          } > issue.md
+          gh issue create --title "Windows build failed ($(node -p "require('./package.json').version"))" --body-file issue.md

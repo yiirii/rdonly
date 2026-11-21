@@ -11,8 +11,10 @@ export function ModeMenu({ mode, onChange }: { mode: ReaderModeName; onChange(m:
   useEffect(() => {
     if (!open) return
     const away = (e: PointerEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); setOpen(false) } }
     window.addEventListener('pointerdown', away)
-    return () => window.removeEventListener('pointerdown', away)
+    window.addEventListener('keydown', esc, true)
+    return () => { window.removeEventListener('pointerdown', away); window.removeEventListener('keydown', esc, true) }
   }, [open])
   return (
     <div className="mode-menu" ref={root}>
