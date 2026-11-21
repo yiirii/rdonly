@@ -1,0 +1,43 @@
+{
+  "name": "rdonly",
+  "productName": "Rd Only",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "electron:build": "node scripts/build-electron.mjs",
+    "electron:dev": "npm run build && npm run electron:build && electron .",
+    "dist:win": "npm run build && npm run electron:build && electron-builder --win"
+  },
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "framer-motion": "^14.14.0",
+    "idb": "^8.0.4",
+    "pdfjs-dist": "^6.5.438",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "fake-indexeddb": "^6.2.8",
+    "happy-dom": "^21.0.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}
