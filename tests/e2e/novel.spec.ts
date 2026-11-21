@@ -84,3 +84,31 @@ test('Escape closes the book even after clicking into the page', async ({ page }
   await f.locator('body').press('Escape')
   await expect(page.getByTestId('reader')).toHaveCount(0)
 })
+
+test('page turns glide (slide + fade) instead of scrolling', async ({ page }) => {
+  await open(page)
+  const host = page.locator('.novel-host')
+  await page.keyboard.press('ArrowRight')
+  await page.waitForTimeout(60)
+  const mid = await host.evaluate((el) => ({ o: Number(getComputedStyle(el).opacity), t: getComputedStyle(el).transform }))
+  expect(mid.o).toBeLessThan(1)
+  expect(mid.t).not.toBe('none')
+  await page.waitForTimeout(600)
+  const rest = await host.evaluate((el) => ({ o: getComputedStyle(el).opacity, t: getComputedStyle(el).transform }))
+  expect(rest).toEqual({ o: '1', t: 'none' })
+  const animated = await page.evaluate(() => {
+    const v = document.querySelector('foliate-view') as any
+    return v?.renderer?.hasAttribute('animated')
+  })
+  expect(animated).toBe(false)
+})
+
+test('holding the arrow key never leaves a half-faded page', async ({ page }) => {
+  await open(page)
+  const first = await cfi(page)
+  for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight', { delay: 20 })
+  await page.waitForTimeout(900)
+  const rest = await page.locator('.novel-host').evaluate((el) => ({ o: getComputedStyle(el).opacity, t: getComputedStyle(el).transform }))
+  expect(rest).toEqual({ o: '1', t: 'none' })
+  expect(await cfi(page)).not.toBe(first)
+})

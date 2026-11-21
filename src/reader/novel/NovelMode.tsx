@@ -6,6 +6,7 @@ import { closeReader } from '../../state/route'
 import { FONTS, fontFaces } from './fonts'
 import { ReadingSettings } from './ReadingSettings'
 import { themeById } from './themes'
+import { createGlide } from './glide'
 
 type FoliateView = HTMLElement & {
   open(f: Blob): Promise<void>; init(o: { lastLocation?: string; showTextStart?: boolean }): Promise<void>
@@ -40,6 +41,14 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   const theme = themeById(s.theme)
   const toggle = useRef(chrome.toggle); toggle.current = chrome.toggle
   const revealRef = useRef(chrome.reveal); revealRef.current = chrome.reveal
+  const glide = useRef(createGlide(() => host.current, () => matchMedia('(prefers-reduced-motion: reduce)').matches)).current
+  /** Taps, keys and clicks glide; touch swipes keep foliate's own finger-following scroll. */
+  const turn = (v: FoliateView, side: 'left' | 'right') => {
+    const rtl = getComputedStyle(v).direction === 'rtl' || (v as unknown as { book?: { dir?: string } }).book?.dir === 'rtl'
+    const forward = side === 'right' ? !rtl : rtl
+    return glide(forward ? 1 : -1, () => (side === 'left' ? v.goLeft() : v.goRight()))
+  }
+  const turnRef = useRef(turn); turnRef.current = turn
 
   useEffect(() => { if (!settingsStore.getState().loaded) void settingsStore.getState().load() }, [])
 
@@ -56,7 +65,7 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
       if (!alive) return
       const r = v.renderer
       if (!v.isFixedLayout) {
-        r.setAttribute('flow', 'paginated'); r.setAttribute('animated', '')
+        r.setAttribute('flow', 'paginated')
         r.setAttribute('margin', '44px'); r.setAttribute('gap', '7%')
         r.setAttribute('max-inline-size', '640px'); r.setAttribute('max-column-count', '2')
       }
@@ -78,9 +87,12 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
           const box = host.current?.getBoundingClientRect()
           if (!frame || !box) return
           const x = (frame.left + ev.clientX - box.left) / box.width
-          if (x < 0.3) v.goLeft(); else if (x > 0.7) v.goRight(); else toggle.current()
+          if (x < 0.3) void turnRef.current(v, 'left'); else if (x > 0.7) void turnRef.current(v, 'right'); else toggle.current()
         })
-        doc.addEventListener('keydown', (ev) => keyNav(ev, v, true)) // keys pressed inside the book's frame
+        doc.addEventListener('keydown', (ev) => keyNav(ev, v, (side) => turnRef.current(v, side), true)) // keys pressed inside the book's frame
+        // Swipes: let foliate animate the finger-following scroll and its snap.
+        doc.addEventListener('touchstart', () => v.renderer.setAttribute('animated', ''), { passive: true })
+        doc.addEventListener('touchend', () => setTimeout(() => v.renderer.removeAttribute('animated'), 450), { passive: true })
         // Mouse moves inside the book's frame don't reach the window: pass the height on for edge reveal.
         doc.addEventListener('mousemove', (ev) => {
           const frame = (doc.defaultView?.frameElement as Element | null)?.getBoundingClientRect()
@@ -101,7 +113,10 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   useEffect(() => { view.current?.renderer?.setStyles?.(bookCss(s)) }, [s.theme, s.font, s.fontSize]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (view.current && !document.querySelector('[role="dialog"]')) keyNav(e, view.current) }
+    const key = (e: KeyboardEvent) => {
+      const v = view.current
+      if (v && !document.querySelector('[role="dialog"]')) keyNav(e, v, (side) => turnRef.current(v, side))
+    }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
   }, [])
@@ -123,11 +138,11 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   )
 }
 
-function keyNav(e: KeyboardEvent, v: FoliateView, inFrame = false) {
+function keyNav(e: KeyboardEvent, _v: FoliateView, turn: (side: 'left' | 'right') => unknown, inFrame = false) {
   // Escape outside the frame is handled by the reader itself; inside the frame it never reaches it.
   if (e.key === 'Escape') { if (inFrame && !document.querySelector('[role="dialog"]')) closeReader(); return }
-  if (e.key === 'ArrowLeft' || e.key === 'PageUp') v.goLeft()
-  else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') v.goRight()
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') void turn('left')
+  else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') void turn('right')
   else return
   e.preventDefault()
 }
