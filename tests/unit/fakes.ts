@@ -16,6 +16,7 @@ export function memFiles(): FileStore & { failPut?: boolean } {
   const s: FileStore & { failPut?: boolean } = {
     async put(id, _e, b) { if (s.failPut) throw new Error('QuotaExceededError'); m.set(id, b) },
     async get(id) { return m.get(id) },
+    async getBlob(id) { const b = m.get(id); return b ? new Blob([b as unknown as BlobPart]) : undefined },
     async has(id) { return m.has(id) },
     async remove(id) { m.delete(id) },
     async usage() { return { usedBytes: [...m.values()].reduce((n, b) => n + b.length, 0) } },

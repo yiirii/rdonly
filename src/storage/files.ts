@@ -17,6 +17,10 @@ export function createIdbFileStore(name = 'rdonly-files'): FileStore {
       await Promise.all([tx.objectStore('files').put({ ext, bytes }, id), tx.objectStore('sizes').put(bytes.byteLength, id), tx.done])
     },
     async get(id) { return ((await (await open()).get('files', id)) as { bytes: Uint8Array } | undefined)?.bytes },
+    async getBlob(id) {
+      const b = ((await (await open()).get('files', id)) as { bytes: Uint8Array } | undefined)?.bytes
+      return b ? new Blob([b as unknown as BlobPart]) : undefined
+    },
     async has(id) { return (await (await open()).getKey('files', id)) !== undefined },
     async remove(id) {
       const tx = (await open()).transaction(['files', 'sizes'], 'readwrite')
@@ -62,6 +66,7 @@ export function createOpfsFileStore(): FileStore {
       const f = await find(id)
       return f ? new Uint8Array(await (await f.h.getFile()).arrayBuffer()) : undefined
     },
+    async getBlob(id) { const f = await find(id); return f ? f.h.getFile() : undefined },
     async has(id) { return (await find(id)) !== undefined },
     async remove(id) { const f = await find(id); if (f) await (await dir()).removeEntry(f.name) },
     async usage() {
@@ -90,7 +95,10 @@ export function chooseFileBackend(hasOpfs: boolean, saved: string | null): FileB
 let chosen: FileStore | undefined
 export function getFileStore(): FileStore {
   const b = bridge()
-  if (b?.files) return b.files
+  if (b?.files) return (chosen ??= {
+    ...b.files,
+    getBlob: async (id) => { const u = await b.files.get(id); return u ? new Blob([u as unknown as BlobPart]) : undefined },
+  })
   if (chosen) return chosen
   let saved: string | null = null
   try { saved = localStorage.getItem(BACKEND_KEY) } catch { /* private mode */ }

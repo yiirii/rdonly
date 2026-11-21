@@ -2,5 +2,8 @@
 import { extractMeta } from './core/metadata'
 import { makeThumb } from './core/cover'
 import { detectFormat } from './core/formats'
-import { createOpfsFileStore } from './storage/files'
-;(window as unknown as { __rdonly: unknown }).__rdonly = { extractMeta, makeThumb, detectFormat, createOpfsFileStore }
+import { createOpfsFileStore, getFileStore } from './storage/files'
+import { getRecordStore } from './storage/select'
+;(window as unknown as { __rdonly: unknown }).__rdonly = {
+  extractMeta, makeThumb, detectFormat, createOpfsFileStore, records: getRecordStore, files: getFileStore,
+}

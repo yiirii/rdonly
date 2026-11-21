@@ -11,6 +11,8 @@ export interface RecordStore {
 export interface FileStore {
   put(id: string, ext: string, bytes: Uint8Array): Promise<void>
   get(id: string): Promise<Uint8Array | undefined>
+  /** For reading: a Blob lets readers slice what they need instead of loading the whole book. */
+  getBlob(id: string): Promise<Blob | undefined>
   has(id: string): Promise<boolean>
   remove(id: string): Promise<void>
   usage(): Promise<{ usedBytes: number; quotaBytes?: number }>
@@ -20,7 +22,7 @@ export interface FileStore {
 export interface RdOnlyBridge {
   platform: 'electron'
   records: RecordStore
-  files: FileStore
+  files: Omit<FileStore, 'getBlob'>
 }
 
 export function bridge(): RdOnlyBridge | undefined {
