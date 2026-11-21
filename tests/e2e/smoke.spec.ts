@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 
 const GOOD = ['novel.epub', 'bare.epub', 'doc.pdf', 'manga.cbz', 'plain.cbz'].map((n) => `tests/fixtures/${n}`)
-const READS = ['long.epub', 'manga.cbz', 'webtoon.cbz', 'long.pdf', 'manga.cbr']
+const READS = ['long.epub', 'manga.cbz', 'webtoon.cbz', 'long.pdf', 'plain.cbz']
 
 async function healthy(page: Page, step: string, errors: string[]) {
   await page.waitForTimeout(450) // let transitions settle
@@ -90,6 +90,18 @@ test('open every kind of book, turn pages, use every control, leave cleanly', as
     await expect(page.getByTestId('reader')).toHaveCount(0)
     await healthy(page, `read ${title}`, errors)
   }
+  // a CBR in the same series as manga.cbz: they become a folder; read the CBR from inside it
+  await page.getByTestId('import-input').setInputFiles(['tests/fixtures/manga.cbr'])
+  await page.getByTestId('series-card').click()
+  await expect(page.getByTestId('series-screen')).toBeVisible()
+  const cbr = page.getByTestId('book-card').nth(1)
+  await cbr.click()
+  await expect(page.locator('[data-testid="comic-page"] img').first()).toBeVisible({ timeout: 10000 })
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('series-screen')).toBeVisible()
+  await page.getByTestId('series-back').click()
+  await healthy(page, 'series folder with a CBR', errors)
+
   // long-press actions open and close cleanly
   const card = page.getByTestId('book-card').first()
   await card.click({ button: 'right' })

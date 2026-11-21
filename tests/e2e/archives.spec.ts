@@ -3,6 +3,9 @@ import { test, expect } from '@playwright/test'
 test('CBR and CB7 comics import with their details and cover', async ({ page }) => {
   await page.goto('/')
   await page.getByTestId('import-input').setInputFiles(['tests/fixtures/manga.cbr', 'tests/fixtures/manga.cb7'])
+  // both files are the same series, so they arrive as one folder
+  await expect(page.getByTestId('series-card')).toContainText('2 volumes')
+  await page.getByTestId('series-card').click()
   await expect(page.getByTestId('book-card')).toHaveCount(2)
   for (const card of await page.getByTestId('book-card').all()) {
     await expect(card).toContainText('Test Manga Vol. 3')
