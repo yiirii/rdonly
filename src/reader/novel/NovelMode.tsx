@@ -39,6 +39,7 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   const s = useSettings(useShallow((x) => ({ theme: x.theme, font: x.font, fontSize: x.fontSize })))
   const theme = themeById(s.theme)
   const toggle = useRef(chrome.toggle); toggle.current = chrome.toggle
+  const revealRef = useRef(chrome.reveal); revealRef.current = chrome.reveal
 
   useEffect(() => { if (!settingsStore.getState().loaded) void settingsStore.getState().load() }, [])
 
@@ -80,6 +81,11 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
           if (x < 0.3) v.goLeft(); else if (x > 0.7) v.goRight(); else toggle.current()
         })
         doc.addEventListener('keydown', (ev) => keyNav(ev, v, true)) // keys pressed inside the book's frame
+        // Mouse moves inside the book's frame don't reach the window: pass the height on for edge reveal.
+        doc.addEventListener('mousemove', (ev) => {
+          const frame = (doc.defaultView?.frameElement as Element | null)?.getBoundingClientRect()
+          if (frame) revealRef.current(frame.top + ev.clientY)
+        })
       })
       await v.init({ lastLocation: initial?.locator, showTextStart: !initial })
     })().catch(() => { if (alive) onError('The file may be damaged or protected. Try importing it again.') })

@@ -23,20 +23,26 @@ type Load = { state: 'loading' } | { state: 'gone' } | { state: 'missing'; book:
 /** Mode components register here as their tasks land; until then a plain page explains what's coming. */
 export const MODE_COMPONENTS: Partial<Record<ReaderModeName, ComponentType<ReaderModeProps>>> = {}
 
+const EDGE_TOP = 90, EDGE_BOTTOM = 110
+
 function useChrome(): ChromeControl {
   const [visible, setVisible] = useState(true)
   const timer = useRef<ReturnType<typeof setTimeout>>()
+  const held = useRef(false)
   const arm = useCallback(() => {
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => setVisible(false), 3000)
+    timer.current = setTimeout(() => { if (!held.current) setVisible(false) }, 3000)
   }, [])
   useEffect(() => { arm(); return () => clearTimeout(timer.current) }, [arm])
+  const show = useCallback(() => { setVisible(true); arm() }, [arm])
   return useMemo(() => ({
     visible,
     toggle: () => setVisible((v) => { if (!v) arm(); return !v }),
     hide: () => setVisible(false),
     poke: () => { if (visible) arm() },
-  }), [visible, arm])
+    reveal: (y: number) => { if (y < EDGE_TOP || y > window.innerHeight - EDGE_BOTTOM) show() },
+    hold: (on: boolean) => { held.current = on; if (!on) arm() },
+  }), [visible, arm, show])
 }
 
 export function ReaderScreen({ bookId }: { bookId: string }) {
@@ -79,6 +85,14 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       void saver.flush()
     }
   }, [saver])
+
+  // Mouse near the top or bottom edge brings the bars back (laptop).
+  const reveal = useRef(chrome.reveal); reveal.current = chrome.reveal
+  useEffect(() => {
+    const move = (e: PointerEvent) => { if (e.pointerType === 'mouse') reveal.current(e.clientY) }
+    window.addEventListener('pointermove', move)
+    return () => window.removeEventListener('pointermove', move)
+  }, [])
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"]')) closeReader() }
@@ -148,7 +162,7 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
         )}
       </AnimatePresence>
 
-      <ReaderChrome visible={chrome.visible || load.state !== 'ready' || !!modeError} title={known?.title ?? ''} onBack={closeReader} tone={extras.tone ?? 'dark'} onInteract={chrome.poke}
+      <ReaderChrome visible={chrome.visible || load.state !== 'ready' || !!modeError} title={known?.title ?? ''} onBack={closeReader} tone={extras.tone ?? 'dark'} onInteract={chrome.poke} onHold={chrome.hold}
         right={<>{load.state === 'ready' && COMIC_FORMATS.includes(load.book.format) && (
           <ModeMenu mode={mode} onChange={async (m) => {
             const b = await libraryStore().getState().update(load.book.id, { modeOverride: m })

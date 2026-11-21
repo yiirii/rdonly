@@ -2,7 +2,13 @@ import type { ReactNode } from 'react'
 import type { BookRecord } from '../library/types'
 import type { ProgressRecord } from '../state/progress'
 
-export interface ChromeControl { visible: boolean; toggle(): void; hide(): void; poke(): void }
+export interface ChromeControl {
+  visible: boolean; toggle(): void; hide(): void; poke(): void
+  /** Mouse moved to this height (window coordinates): near the top or bottom edge shows the bars. */
+  reveal(clientY: number): void
+  /** The pointer is resting on a bar: don't auto-hide while true. */
+  hold(on: boolean): void
+}
 
 export interface ReaderModeProps {
   book: BookRecord
