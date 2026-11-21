@@ -1,9 +1,12 @@
+import { MotionConfig } from 'framer-motion'
 import { LibraryScreen } from './ui/LibraryScreen'
 
 export function App() {
   return (
-    <main className="app">
-      <LibraryScreen />
-    </main>
+    <MotionConfig reducedMotion="user">
+      <main className="app">
+        <LibraryScreen />
+      </main>
+    </MotionConfig>
   )
 }
