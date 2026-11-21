@@ -46,3 +46,39 @@ describe('requestPersistence', () => {
     expect(await requestPersistence()).toBe('unsupported')
   })
 })
+
+describe('chooseFileBackend', () => {
+  it('sticks with the backend this device already uses', async () => {
+    const { chooseFileBackend } = await import('../../src/storage/files')
+    expect(chooseFileBackend(true, 'idb')).toBe('idb')
+    expect(chooseFileBackend(false, 'opfs')).toBe('opfs')
+  })
+  it('prefers OPFS on first run when available', async () => {
+    const { chooseFileBackend } = await import('../../src/storage/files')
+    expect(chooseFileBackend(true, null)).toBe('opfs')
+    expect(chooseFileBackend(false, null)).toBe('idb')
+  })
+})
+
+describe('IndexedDB usage', () => {
+  it('adds up sizes without loading book bytes', async () => {
+    const s = createIdbFileStore('usage-test')
+    await s.put('a', 'cbz', new Uint8Array(10))
+    await s.put('b', 'cbz', new Uint8Array(5))
+    const { IDBObjectStore } = globalThis as unknown as { IDBObjectStore: { prototype: Record<string, unknown> } }
+    const origGetAll = IDBObjectStore.prototype.getAll as (...a: unknown[]) => unknown
+    const origCursor = IDBObjectStore.prototype.openCursor as (...a: unknown[]) => unknown
+    const touched: string[] = []
+    IDBObjectStore.prototype.getAll = function (this: { name: string }, ...a: unknown[]) { touched.push(this.name); return origGetAll.apply(this, a) }
+    IDBObjectStore.prototype.openCursor = function (this: { name: string }, ...a: unknown[]) { touched.push(this.name); return origCursor.apply(this, a) }
+    try {
+      expect((await s.usage()).usedBytes).toBe(15)
+      await s.remove('a')
+      expect((await s.usage()).usedBytes).toBe(5)
+    } finally {
+      IDBObjectStore.prototype.getAll = origGetAll
+      IDBObjectStore.prototype.openCursor = origCursor
+    }
+    expect(touched).not.toContain('files')
+  })
+})
