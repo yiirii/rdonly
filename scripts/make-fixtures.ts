@@ -1,0 +1,88 @@
+// Generates small, deterministic test books into tests/fixtures. Run: npx tsx scripts/make-fixtures.ts
+import { zipSync, strToU8 } from 'fflate'
+import { deflateSync } from 'node:zlib'
+import { writeFileSync, mkdirSync } from 'node:fs'
+
+const out = 'tests/fixtures'
+mkdirSync(out, { recursive: true })
+
+/** Solid-colour RGB PNG. */
+export function png(w: number, h: number, [r, g, b]: [number, number, number]): Uint8Array {
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0 })
+  const crc = (buf: Buffer) => { let c = 0xffffffff; for (const x of buf) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0 }
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4); len.writeUInt32BE(data.length)
+    const td = Buffer.concat([Buffer.from(type), data]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td))
+    return Buffer.concat([len, td, c])
+  }
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: w }, () => [r, g, b]).flat())])
+  const raw = Buffer.concat(Array.from({ length: h }, () => row))
+  return new Uint8Array(Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]))
+}
+
+const fixed = { mtime: new Date('2026-01-01T00:00:00Z') }
+const zip = (files: Record<string, Uint8Array>, storeFirst?: string) => {
+  const entries: Record<string, [Uint8Array, { level: 0 | 6; mtime: Date }]> = {}
+  if (storeFirst) entries[storeFirst] = [files[storeFirst], { level: 0, ...fixed }]
+  for (const [k, v] of Object.entries(files)) if (k !== storeFirst) entries[k] = [v, { level: 6, ...fixed }]
+  return zipSync(entries)
+}
+
+function epub(opts: { title?: string; author?: string; cover?: boolean; series?: string }) {
+  const meta = [
+    opts.title ? `<dc:title>${opts.title}</dc:title>` : '',
+    opts.author ? `<dc:creator>${opts.author}</dc:creator>` : '',
+    '<dc:identifier id="uid">urn:uuid:00000000-0000-0000-0000-000000000001</dc:identifier>',
+    opts.series ? `<meta property="belongs-to-collection" id="c1">${opts.series}</meta><meta refines="#c1" property="group-position">2</meta>` : '',
+  ].join('')
+  const files: Record<string, Uint8Array> = {
+    mimetype: strToU8('application/epub+zip'),
+    'META-INF/container.xml': strToU8('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'),
+    'OEBPS/content.opf': strToU8(`<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">${meta}</metadata><manifest><item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>${opts.cover ? '<item id="cov" href="images/cover.png" media-type="image/png" properties="cover-image"/>' : ''}</manifest><spine><itemref idref="ch1"/></spine></package>`),
+    'OEBPS/ch1.xhtml': strToU8('<?xml version="1.0"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>1</title></head><body><p>It was a calm night.</p></body></html>'),
+  }
+  if (opts.cover) files['OEBPS/images/cover.png'] = png(60, 90, [200, 169, 106])
+  return zip(files, 'mimetype')
+}
+
+function pdf(title: string): Uint8Array {
+  const objs = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 4 0 R /Resources << /Font << /F1 6 0 R >> >> >>',
+    null, // content stream
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Contents 4 0 R /Resources << /Font << /F1 6 0 R >> >> >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Title (${title}) /Author (P. Author) >>`,
+  ]
+  const stream = '0.78 0.66 0.42 rg 0 0 200 300 re f 0 0 0 rg BT /F1 18 Tf 30 150 Td (Test Doc) Tj ET'
+  let body = '%PDF-1.4\n'
+  const offsets: number[] = []
+  objs.forEach((o, i) => {
+    offsets.push(body.length)
+    body += `${i + 1} 0 obj\n${o ?? `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`}\nendobj\n`
+  })
+  const xref = body.length
+  body += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`
+  body += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R /Info 7 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return strToU8(body)
+}
+
+const comicInfo = '<?xml version="1.0"?><ComicInfo><Series>Test Manga</Series><Number>3</Number><Title>Vol 3</Title><Writer>M. Artist</Writer><Manga>YesAndRightToLeft</Manga></ComicInfo>'
+
+writeFileSync(`${out}/novel.epub`, epub({ title: 'Test Novel', author: 'A. Writer', cover: true, series: 'Test Saga' }))
+writeFileSync(`${out}/bare.epub`, epub({}))
+writeFileSync(`${out}/doc.pdf`, pdf('Test Doc'))
+writeFileSync(`${out}/manga.cbz`, zip({
+  'ComicInfo.xml': strToU8(comicInfo),
+  '1.png': png(60, 90, [224, 108, 117]), '2.png': png(60, 90, [40, 40, 40]), '3.png': png(60, 90, [80, 80, 80]),
+}))
+writeFileSync(`${out}/plain.cbz`, zip({
+  '10.png': png(60, 90, [10, 10, 10]), '2.png': png(60, 90, [20, 20, 20]), '1.png': png(60, 90, [229, 192, 123]),
+}))
+const full = zip({ '1.png': png(60, 90, [1, 2, 3]), '2.png': png(60, 90, [4, 5, 6]) })
+writeFileSync(`${out}/broken.cbz`, full.slice(0, Math.floor(full.length / 2)))
+writeFileSync(`${out}/empty.epub`, new Uint8Array())
+writeFileSync(`${out}/book.mobi`, strToU8('BOOKMOBI' + '\0'.repeat(64)))
+console.log('fixtures written')
