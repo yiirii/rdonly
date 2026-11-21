@@ -6,7 +6,7 @@ import { memFiles, memRecords } from './fakes'
 
 let records: ReturnType<typeof memRecords>, files: ReturnType<typeof memFiles>
 const deps = () => ({ records, files, now: () => 1000, thumb: async () => 'data:image/webp;base64,AA' })
-const f = (fixtureName: string, name = fixtureName) => ({ name, bytes: fixture(fixtureName) })
+const f = (fixtureName: string, name = fixtureName) => ({ name, read: async () => fixture(fixtureName) })
 
 beforeEach(() => { records = memRecords(); files = memFiles() })
 
@@ -77,5 +77,27 @@ describe('importFiles', () => {
     const [r] = await importFiles([f('novel.epub')], { ...deps(), thumb: async () => { throw new Error('canvas') } })
     expect(r.status).toBe('added')
     expect((await records.get<BookRecord>('books', r.bookId!))!.coverThumb).toBeUndefined()
+  })
+  it('reports a file that cannot be read and imports the rest', async () => {
+    const res = await importFiles([{ name: 'cloud.epub', read: async () => { throw new Error('NotReadableError') } }, f('manga.cbz')], deps())
+    expect(res.map((r) => r.status)).toEqual(['error', 'added'])
+    expect(res[0].message).toMatch(/read/i)
+  })
+
+  it('reads each file only when it is its turn', async () => {
+    const order: string[] = []
+    const item = (n: string) => ({ name: n, read: async () => { order.push(`read ${n}`); return fixture(n) } })
+    const recs = memRecords()
+    const origPut = recs.put
+    recs.put = async (c, r) => { order.push(`saved ${(r as { fileName?: string }).fileName}`); return origPut(c, r) }
+    await importFiles([item('novel.epub'), item('manga.cbz')], { ...deps(), records: recs })
+    expect(order).toEqual(['read novel.epub', 'saved novel.epub', 'read manga.cbz', 'saved manga.cbz'])
+  })
+
+  it('turns an unexpected storage failure into an error result', async () => {
+    const recs = memRecords()
+    recs.get = async () => { throw new Error('boom') }
+    const [r] = await importFiles([f('novel.epub')], { ...deps(), records: recs })
+    expect(r.status).toBe('error')
   })
 })

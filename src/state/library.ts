@@ -33,8 +33,7 @@ export function createLibraryStore(deps: ImportDeps) {
     async import(files) {
       set({ busy: true })
       try {
-        const input = await Promise.all(files.map(async (f) => ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })))
-        const results = await importFiles(input, deps)
+        const results = await importFiles(files.map((f) => ({ name: f.name, read: async () => new Uint8Array(await f.arrayBuffer()) })), deps)
         await get().load()
         return results
       } finally { set({ busy: false }) }

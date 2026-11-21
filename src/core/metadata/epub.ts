@@ -1,4 +1,5 @@
-import { unzipSync, strFromU8 } from 'fflate'
+import { strFromU8 } from 'fflate'
+import { zipPick } from './zip'
 import type { BookMeta } from './types'
 import { blobOf, byLocal, clean, mimeFor, num, xml } from './util'
 
@@ -10,12 +11,12 @@ const resolve = (base: string, href: string) => {
 }
 
 export function epubMeta(bytes: Uint8Array): BookMeta {
-  const files = unzipSync(bytes)
-  const container = files['META-INF/container.xml']
+  const container = zipPick(bytes, ['META-INF/container.xml'])['META-INF/container.xml']
   if (!container) throw new Error('Not a valid EPUB (no container.xml)')
   const opfPath = byLocal(xml(strFromU8(container)), 'rootfile')[0]?.getAttribute('full-path')
-  if (!opfPath || !files[opfPath]) throw new Error('Not a valid EPUB (no package file)')
-  const opf = xml(strFromU8(files[opfPath]))
+  const opfBytes = opfPath ? zipPick(bytes, [opfPath])[opfPath] : undefined
+  if (!opfPath || !opfBytes) throw new Error('Not a valid EPUB (no package file)')
+  const opf = xml(strFromU8(opfBytes))
   const metas = byLocal(opf, 'meta')
 
   const meta: BookMeta = {
@@ -40,7 +41,7 @@ export function epubMeta(bytes: Uint8Array): BookMeta {
   const href = coverItem?.getAttribute('href')
   if (href) {
     const path = resolve(opfPath, href)
-    const data = files[path]
+    const data = zipPick(bytes, [path])[path]
     if (data) meta.cover = blobOf(data, coverItem!.getAttribute('media-type') ?? mimeFor(path))
   }
   return meta

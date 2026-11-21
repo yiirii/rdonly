@@ -19,13 +19,20 @@ const defaultThumb = async (cover: Blob) => {
   return blobToDataUrl(await makeThumb(cover))
 }
 
-export async function importFiles(input: { name: string; bytes: Uint8Array }[], deps: ImportDeps): Promise<ImportResult[]> {
+/** A file to import; its bytes are read only when its turn comes, so one book is in memory at a time. */
+export interface ImportItem { name: string; read: () => Promise<Uint8Array> }
+
+export async function importFiles(input: ImportItem[], deps: ImportDeps): Promise<ImportResult[]> {
   const out: ImportResult[] = []
-  for (const f of input) out.push(await importOne(f, deps)) // sequential: keeps memory flat on the phone
+  for (const item of input) {
+    let bytes: Uint8Array
+    try { bytes = await item.read() } catch { out.push({ fileName: item.name, status: 'error', message: 'Could not read the file' }); continue }
+    try { out.push(await importOne(item.name, bytes, deps)) } catch { out.push({ fileName: item.name, status: 'error', message: 'Something went wrong saving this book' }) }
+  }
   return out
 }
 
-async function importOne({ name, bytes }: { name: string; bytes: Uint8Array }, deps: ImportDeps): Promise<ImportResult> {
+async function importOne(name: string, bytes: Uint8Array, deps: ImportDeps): Promise<ImportResult> {
   const { records, files } = deps
   const now = deps.now ?? Date.now
   const format = detectFormat(name, bytes)
