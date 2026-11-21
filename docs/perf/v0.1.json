@@ -3,15 +3,15 @@
   "cpuThrottle": 4,
   "viewport": "390x844",
   "cardsEnter": {
-    "frames": 100,
+    "frames": 102,
     "p50": 16.7,
-    "p95": 33.4,
-    "max": 133.3
+    "p95": 33.2,
+    "max": 150
   },
   "settingsSheet": {
-    "frames": 105,
+    "frames": 104,
     "p50": 16.7,
-    "p95": 16.8,
-    "max": 83.3
+    "p95": 16.7,
+    "max": 50
   }
 }

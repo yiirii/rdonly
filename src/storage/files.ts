@@ -51,7 +51,10 @@ export function createOpfsFileStore(): FileStore {
         await w.close()
       } catch (e) {
         await w.abort().catch(() => {})
-        if (!existed) await d.removeEntry(name).catch(() => {})
+        // The write lock can outlive abort() briefly; retry so no empty file is left behind.
+        for (let i = 0; !existed && i < 10; i++) {
+          try { await d.removeEntry(name); break } catch { await new Promise((r) => setTimeout(r, 30 * (i + 1))) }
+        }
         throw e
       }
     },
