@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest'
-import { mkdtempSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createDiskStorage } from '../../electron/storage'
@@ -50,5 +50,29 @@ describe('disk file store', () => {
   })
   it('rejects ids that are not plain hashes', async () => {
     await expect(createDiskStorage(dir).files.put('../x', 'epub', new Uint8Array())).rejects.toThrow()
+  })
+})
+
+describe('disk storage failure handling', () => {
+  it('a failed record save leaves no record behind', async () => {
+    const s = createDiskStorage(dir)
+    await s.records.put('books', { id: 'a', updatedAt: 1 })
+    mkdirSync(join(dir, 'records', 'books.json.tmp')) // makes the next write fail
+    await expect(s.records.put('books', { id: 'b', updatedAt: 1 })).rejects.toThrow()
+    expect(await s.records.get('books', 'b')).toBeUndefined()
+    expect((await s.records.list('books')).map((r) => r.id)).toEqual(['a'])
+  })
+  it('a leftover partial file does not count as the book', async () => {
+    const s = createDiskStorage(dir)
+    mkdirSync(join(dir, 'books'), { recursive: true })
+    writeFileSync(join(dir, 'books', 'abc.cbz.tmp'), 'half')
+    expect(await s.files.has('abc')).toBe(false)
+    expect(await s.files.get('abc')).toBeUndefined()
+  })
+  it('a failed book write cleans up its partial file', async () => {
+    const s = createDiskStorage(dir)
+    mkdirSync(join(dir, 'books', 'abc.cbz'), { recursive: true }) // rename onto a directory fails
+    await expect(s.files.put('abc', 'cbz', new Uint8Array([1]))).rejects.toThrow()
+    expect(existsSync(join(dir, 'books', 'abc.cbz.tmp'))).toBe(false)
   })
 })

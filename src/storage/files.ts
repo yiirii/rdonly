@@ -21,17 +21,27 @@ export function createIdbFileStore(name = 'rdonly-files'): FileStore {
 export function createOpfsFileStore(): FileStore {
   const dir = async () => (await navigator.storage.getDirectory()).getDirectoryHandle('books', { create: true })
   const find = async (id: string) => {
+    const exact = new RegExp(`^${id}\\.[a-z0-9]+$`)
     for await (const [name, h] of (await dir()) as unknown as AsyncIterable<[string, FileSystemHandle]>) {
-      if (h.kind === 'file' && name.split('.')[0] === id) return { name, h: h as FileSystemFileHandle }
+      if (h.kind === 'file' && exact.test(name)) return { name, h: h as FileSystemFileHandle }
     }
     return undefined
   }
   return {
     async put(id, ext, bytes) {
-      const h = await (await dir()).getFileHandle(`${id}.${ext}`, { create: true })
+      const d = await dir()
+      const name = `${id}.${ext}`
+      const existed = await d.getFileHandle(name).then(() => true, () => false)
+      const h = await d.getFileHandle(name, { create: true })
       const w = await h.createWritable()
-      await w.write(bytes as unknown as FileSystemWriteChunkType)
-      await w.close()
+      try {
+        await w.write(bytes as unknown as FileSystemWriteChunkType)
+        await w.close()
+      } catch (e) {
+        await w.abort().catch(() => {})
+        if (!existed) await d.removeEntry(name).catch(() => {})
+        throw e
+      }
     },
     async get(id) {
       const f = await find(id)

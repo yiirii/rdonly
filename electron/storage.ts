@@ -25,12 +25,21 @@ export function createDiskStorage(root: string): { records: RecordStore; files: 
     })())
     return cache.get(col)!
   }
-  const save = (col: string, m: Map<string, BaseRecord>) => {
+  /** Read-modify-write on a copy, one at a time per collection; the cache changes only after the disk write succeeds. */
+  const mutate = (col: string, change: (m: Map<string, BaseRecord>) => void) => {
     const next = (queue.get(col) ?? Promise.resolve()).then(async () => {
+      const copy = new Map(await load(col))
+      change(copy)
       await fs.mkdir(recDir, { recursive: true })
       const file = join(recDir, `${col}.json`)
-      await fs.writeFile(`${file}.tmp`, JSON.stringify([...m.values()]))
-      await fs.rename(`${file}.tmp`, file)
+      try {
+        await fs.writeFile(`${file}.tmp`, JSON.stringify([...copy.values()]))
+        await fs.rename(`${file}.tmp`, file)
+      } catch (e) {
+        await fs.rm(`${file}.tmp`, { force: true, recursive: true }).catch(() => {})
+        throw e
+      }
+      cache.set(col, Promise.resolve(copy))
     })
     queue.set(col, next.catch(() => {}))
     return next
@@ -38,27 +47,36 @@ export function createDiskStorage(root: string): { records: RecordStore; files: 
 
   const records: RecordStore = {
     async get(col, id) { return (await load(col)).get(id) as never },
-    async put(col, rec) { const m = await load(col); m.set(rec.id, rec); await save(col, m) },
+    async put(col, rec) { await mutate(col, (m) => m.set(rec.id, rec)) },
     async list(col, o) { return [...(await load(col)).values()].filter((r) => o?.includeDeleted || !r.deleted) as never },
     async remove(col, id) {
-      const m = await load(col)
-      const prev = m.get(id)
-      m.set(id, { ...(prev ?? { id }), id, deleted: true, updatedAt: Math.max(Date.now(), (prev?.updatedAt ?? 0) + 1) })
-      await save(col, m)
+      await mutate(col, (m) => {
+        const prev = m.get(id)
+        m.set(id, { ...(prev ?? { id }), id, deleted: true, updatedAt: Math.max(Date.now(), (prev?.updatedAt ?? 0) + 1) })
+      })
     },
   }
 
   const findBook = async (id: string) => {
     check('id', id)
-    try { return (await fs.readdir(bookDir)).find((n) => n.split('.')[0] === id) } catch { return undefined }
+    const exact = new RegExp(`^${id}\\.[a-z0-9]+$`)
+    try {
+      for (const e of await fs.readdir(bookDir, { withFileTypes: true })) if (e.isFile() && exact.test(e.name)) return e.name
+    } catch { /* no books yet */ }
+    return undefined
   }
   const files: FileStore = {
     async put(id, ext, bytes) {
       check('id', id); check('ext', ext)
       await fs.mkdir(bookDir, { recursive: true })
       const p = join(bookDir, `${id}.${ext}`)
-      await fs.writeFile(`${p}.tmp`, bytes)
-      await fs.rename(`${p}.tmp`, p)
+      try {
+        await fs.writeFile(`${p}.tmp`, bytes)
+        await fs.rename(`${p}.tmp`, p)
+      } catch (e) {
+        await fs.rm(`${p}.tmp`, { force: true }).catch(() => {})
+        throw e
+      }
     },
     async get(id) { const n = await findBook(id); return n ? new Uint8Array(await fs.readFile(join(bookDir, n))) : undefined },
     async has(id) { return (await findBook(id)) !== undefined },
