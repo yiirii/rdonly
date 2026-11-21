@@ -36,7 +36,7 @@ async function importOne(name: string, bytes: Uint8Array, deps: ImportDeps): Pro
   const { records, files } = deps
   const now = deps.now ?? Date.now
   const format = detectFormat(name, bytes)
-  if (!format) return { fileName: name, status: 'unsupported', message: 'Not an EPUB, PDF or CBZ file' }
+  if (!format) return { fileName: name, status: 'unsupported', message: 'Not an EPUB, PDF or comic file' }
   let id: string
   try { id = await sha256Hex(bytes) } catch { return { fileName: name, status: 'error', message: 'Could not read the file' } }
 

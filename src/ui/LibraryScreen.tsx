@@ -12,8 +12,8 @@ import { Toast } from './Toast'
 import { settle } from './motion'
 
 export function LibraryScreen() {
-  const { books, loaded, busy, sort, load, importFiles, setSort } = useLibrary(useShallow((s) => ({
-    books: s.books, loaded: s.loaded, busy: s.busy, sort: s.sort, load: s.load, importFiles: s.import, setSort: s.setSort,
+  const { books, loaded, busy, sort, load, importFiles, importFolder, setSort } = useLibrary(useShallow((s) => ({
+    books: s.books, loaded: s.loaded, busy: s.busy, sort: s.sort, load: s.load, importFiles: s.import, importFolder: s.importFolder, setSort: s.setSort,
   })))
   const [toast, setToast] = useState<{ msg: string; tone: 'ok' | 'warn' } | null>(null)
   const [settings, setSettings] = useState(false)
@@ -26,6 +26,11 @@ export function LibraryScreen() {
     const bad = res.some((r) => r.status === 'error' || r.status === 'unsupported')
     setToast({ msg: summarize(res), tone: bad ? 'warn' : 'ok' })
   }, [importFiles])
+  const onFolder = useCallback(async (files: File[]) => {
+    const res = await importFolder(files)
+    const bad = res.some((r) => r.status === 'error' || r.status === 'unsupported')
+    setToast({ msg: summarize(res) || 'No images in that folder.', tone: bad ? 'warn' : 'ok' })
+  }, [importFolder])
   const clearToast = useCallback(() => setToast(null), [])
   const closeSettings = useCallback(() => setSettings(false), [])
 
@@ -46,7 +51,7 @@ export function LibraryScreen() {
             <rect x="12" y="15.5" width="4" height="5.5" rx="1.5" fill="currentColor" />
           </svg>
         </button>
-        {books.length > 0 && <ImportButton onFiles={onFiles} busy={busy} />}
+        {books.length > 0 && <ImportButton onFiles={onFiles} onFolder={onFolder} busy={busy} />}
       </header>
 
       {loaded && books.length === 0 && (
@@ -60,8 +65,8 @@ export function LibraryScreen() {
             <rect x="148" y="44" width="26" height="78" rx="3" fill="#56b6c2" transform="rotate(12 161 122)" />
           </svg>
           <h2>Your shelf is empty</h2>
-          <p>Add EPUB, PDF or CBZ files. {bridge() ? 'You can also drop them anywhere in this window.' : 'On iPhone, save files to Files first, then pick them here.'}</p>
-          <ImportButton onFiles={onFiles} busy={busy} label="Import books" />
+          <p>Add EPUB, PDF, CBZ, CBR or CB7 files. {bridge() ? 'You can also drop them anywhere in this window.' : 'On iPhone, save files to Files first, then pick them here.'}</p>
+          <ImportButton onFiles={onFiles} onFolder={onFolder} busy={busy} label="Import books" />
         </motion.div>
       )}
 

@@ -26,5 +26,6 @@ export async function openPageSource(file: Blob, format: BookFormat): Promise<Pa
       close() {},
     }
   }
-  throw new Error(`Pages can't be read from ${format} files yet`)
+  if (format === 'cbr' || format === 'cb7') return (await import('./libarchive')).openLibarchive(file)
+  throw new Error(`${format} files don't have pages`)
 }

@@ -1,5 +1,6 @@
 import { createStore, useStore } from 'zustand'
-import { importFiles, type ImportDeps } from '../library/importBooks'
+import { importFiles, type ImportDeps, type ImportItem } from '../library/importBooks'
+import { folderToCbz } from '../library/folder'
 import type { BookRecord, ImportResult } from '../library/types'
 import { getRecordStore } from '../storage/select'
 import { getFileStore } from '../storage/files'
@@ -14,6 +15,7 @@ interface LibraryState {
   busy: boolean
   load(): Promise<void>
   import(files: File[]): Promise<ImportResult[]>
+  importFolder(files: File[]): Promise<ImportResult[]>
   setSort(s: SortKey): void
 }
 
@@ -26,7 +28,7 @@ const sorted = (all: BookRecord[], s: SortKey) => [...all].sort(sorters[s])
 export function createLibraryStore(deps: ImportDeps) {
   let queue: Promise<unknown> = Promise.resolve()
   let pending = 0
-  return createStore<LibraryState>()((set, get) => ({
+  const store = createStore<LibraryState>()((set, get) => ({
     loaded: false, all: [], books: [], sort: 'recent', busy: false,
     async load() {
       const all = await deps.records.list<BookRecord>('books')
@@ -34,20 +36,28 @@ export function createLibraryStore(deps: ImportDeps) {
     },
     /** Imports are queued: a drop during an import waits its turn instead of running alongside. */
     import(files) {
-      pending++
-      set({ busy: true })
-      const run = queue.then(async () => {
-        try {
-          const results = await importFiles(files.map((f) => ({ name: f.name, read: async () => new Uint8Array(await f.arrayBuffer()) })), deps)
-          await get().load()
-          return results
-        } finally { if (--pending === 0) set({ busy: false }) }
-      })
-      queue = run.catch(() => {})
-      return run
+      return run(files.map((f) => ({ name: f.name, read: async () => new Uint8Array(await f.arrayBuffer()) })))
+    },
+    importFolder(files) {
+      const item = folderToCbz(files)
+      return item ? run([item]) : Promise.resolve([{ fileName: 'folder', status: 'unsupported' as const, message: 'No images in that folder' }])
     },
     setSort(sort) { set({ sort, books: sorted(get().all, sort) }) },
   }))
+  function run(items: ImportItem[]) {
+    pending++
+    store.setState({ busy: true })
+    const go = queue.then(async () => {
+      try {
+        const results = await importFiles(items, deps)
+        await store.getState().load()
+        return results
+      } finally { if (--pending === 0) store.setState({ busy: false }) }
+    })
+    queue = go.catch(() => {})
+    return go
+  }
+  return store
 }
 
 let appStore: ReturnType<typeof createLibraryStore> | undefined

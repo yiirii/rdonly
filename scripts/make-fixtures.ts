@@ -95,4 +95,22 @@ writeFileSync(`${out}/book.mobi`, strToU8('BOOKMOBI' + '\0'.repeat(64)))
   execSync('zip -q -X -fz z64.cbz 1.png 2.png', { cwd: d })
   writeFileSync(`${out}/zip64.cbz`, readFileSync(join(d, 'z64.cbz')))
 }
+// CBR and CB7 versions of the manga fixture (needs the rar and 7z command-line tools).
+{
+  const d = mkdtempSync(join(tmpdir(), 'arc-'))
+  writeFileSync(join(d, 'ComicInfo.xml'), comicInfo)
+  ;([[224, 108, 117], [40, 40, 40], [80, 80, 80]] as const).forEach((c, i) => writeFileSync(join(d, `${i + 1}.png`), png(60, 90, c as unknown as [number, number, number])))
+  execSync('rar a -inul -ep -tsm- -tsc- -tsa- manga.cbr ComicInfo.xml 1.png 2.png 3.png', { cwd: d })
+  execSync('7z a -bd -bso0 -mtm=off -mtc=off -mta=off manga.cb7 ComicInfo.xml 1.png 2.png 3.png', { cwd: d })
+  writeFileSync(`${out}/manga.cbr`, readFileSync(join(d, 'manga.cbr')))
+  writeFileSync(`${out}/manga.cb7`, readFileSync(join(d, 'manga.cb7')))
+  // a ZIP that was simply renamed to .cbr (common in the wild)
+  writeFileSync(`${out}/zip-named.cbr`, readFileSync(`${out}/manga.cbz`))
+}
+// A folder of loose images, for folder import.
+{
+  const f = `${out}/folder-comic`
+  mkdirSync(f, { recursive: true })
+  ;(['10.png', '2.png', '1.png'] as const).forEach((n, i) => writeFileSync(`${f}/${n}`, png(60, 90, [30 * i, 90, 160])))
+}
 console.log('fixtures written')

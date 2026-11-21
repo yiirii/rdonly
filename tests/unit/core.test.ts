@@ -20,6 +20,9 @@ describe('detectFormat', () => {
   it.each(['book.mobi', 'empty.epub'])('%s is unsupported', (name) => {
     expect(detectFormat(name, fixture(name))).toBeNull()
   })
+  it.each([['manga.cbr', 'cbr'], ['manga.cb7', 'cb7'], ['zip-named.cbr', 'cbz']])('%s → %s by its bytes', (n, fmt) => {
+    expect(detectFormat(n, fixture(n))).toBe(fmt)
+  })
   it('trusts bytes over the extension', () => {
     expect(detectFormat('renamed.zip', fixture('novel.epub'))).toBe('epub')
     expect(detectFormat('weird.epub', fixture('doc.pdf'))).toBe('pdf')

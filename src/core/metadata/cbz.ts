@@ -15,8 +15,15 @@ export function cbzMeta(bytes: Uint8Array): BookMeta {
   if (!first) throw new Error('No pages found in this comic')
   const files = zipPick(bytes, infoName ? [infoName, first] : [first])
   const meta: BookMeta = {}
-  if (infoName) {
-    const doc = xml(strFromU8(files[infoName]))
+  if (infoName) Object.assign(meta, parseComicInfo(strFromU8(files[infoName])))
+  meta.cover = blobOf(files[first], mimeFor(first))
+  return meta
+}
+
+export function parseComicInfo(text: string): BookMeta {
+  const meta: BookMeta = {}
+  {
+    const doc = xml(text)
     const get = (t: string) => clean(byLocal(doc, t)[0]?.textContent)
     meta.series = get('Series')
     meta.volume = num(get('Volume') ?? get('Number'))
@@ -26,6 +33,5 @@ export function cbzMeta(bytes: Uint8Array): BookMeta {
     else meta.title = t
     meta.mangaHint = /^yes/i.test(get('Manga') ?? '')
   }
-  meta.cover = blobOf(files[first], mimeFor(first))
   return meta
 }
