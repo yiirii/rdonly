@@ -5,6 +5,9 @@ import { requestPersistence } from '../storage/persist'
 import { bridge } from '../storage/types'
 import { summarize, useLibrary } from '../state/library'
 import { BookCard } from './BookCard'
+import { SeriesCard } from './SeriesCard'
+import { groupLibrary } from '../library/series'
+import { closeSeries, useRoute } from '../state/route'
 import { BookActions } from './BookActions'
 import type { BookRecord } from '../library/types'
 import { DropZone } from './DropZone'
@@ -23,6 +26,13 @@ export function LibraryScreen() {
   const closeActions = useCallback(() => setActionsFor(null), [])
   const reduce = useReducedMotion()
   useEffect(() => { void load() }, [load])
+  const route = useRoute()
+  const items = groupLibrary(books)
+  const seriesOpen = route.name === 'series' || (route.name === 'reader' && route.series)
+  const seriesKeyOpen = route.name === 'series' ? route.key : route.name === 'reader' ? route.series : undefined
+  const folder = seriesOpen ? items.find((i) => i.kind === 'series' && i.key === seriesKeyOpen) : undefined
+  // The folder was emptied (or no longer has 2+ books): go back to the library.
+  useEffect(() => { if (loaded && route.name === 'series' && !folder) closeSeries() }, [loaded, route.name, folder])
 
   const onFiles = useCallback(async (files: File[]) => {
     if (!bridge()) void requestPersistence()
@@ -74,9 +84,26 @@ export function LibraryScreen() {
         </motion.div>
       )}
 
-      {books.length > 0 && (
+      {books.length > 0 && !folder && (
         <section className="shelf" aria-label="Books">
-          <AnimatePresence initial={false}>{books.map((b, i) => <BookCard key={b.id} book={b} index={i} onActions={(b) => { setToast(null); setActionsFor(b) }} />)}</AnimatePresence>
+          <AnimatePresence initial={false}>{items.map((it, i) => it.kind === 'book'
+            ? <BookCard key={it.book.id} book={it.book} index={i} onActions={(b) => { setToast(null); setActionsFor(b) }} />
+            : <SeriesCard key={`s:${it.key}`} seriesKey={it.key} name={it.name} books={it.books} index={i} />)}</AnimatePresence>
+        </section>
+      )}
+      {folder && folder.kind === 'series' && (
+        <section className="series-view" data-testid="series-screen" aria-label={folder.name}>
+          <header className="series-head">
+            <button className="keycap icon" data-testid="series-back" aria-label="Back to library" onClick={closeSeries}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            <div><h2>{folder.name}</h2><p className="dim">{folder.books.length} volumes</p></div>
+          </header>
+          <div className="shelf">
+            <AnimatePresence initial={false}>{folder.books.map((b, i) => (
+              <BookCard key={b.id} book={b} index={i} onActions={(bk) => { setToast(null); setActionsFor(bk) }} />
+            ))}</AnimatePresence>
+          </div>
         </section>
       )}
 
