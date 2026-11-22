@@ -35,6 +35,8 @@ interface LibraryState {
   addToCollection(collectionId: string, bookIds: string[]): Promise<void>
   removeMany(ids: string[]): Promise<void>
   busy: boolean
+  /** Id of the collection made a moment ago, so its tab can celebrate once. */
+  justCreated: string | null
   load(): Promise<void>
   import(files: File[]): Promise<ImportResult[]>
   importFolder(files: File[]): Promise<ImportResult[]>
@@ -55,7 +57,7 @@ export function createLibraryStore(deps: ImportDeps) {
   let pending = 0
   let loadSeq = 0 // only the newest load may write its results
   const store = createStore<LibraryState>()((set, get) => ({
-    loaded: false, all: [], books: [], progress: [], collections: [], items: [], sort: 'added', tab: 'all', types: [], search: '', busy: false,
+    loaded: false, all: [], books: [], progress: [], collections: [], items: [], sort: 'added', tab: 'all', types: [], search: '', busy: false, justCreated: null,
     async load() {
       const my = ++loadSeq
       const r = deps.records
@@ -70,7 +72,7 @@ export function createLibraryStore(deps: ImportDeps) {
     setTab(tab) { set({ tab }) },
     toggleType(t) { const ts = get().types; set({ types: ts.includes(t) ? ts.filter((x) => x !== t) : [...ts, t] }) },
     setSearch(search) { set({ search }) },
-    async newCollection(name, color) { const c = await createCollection(deps.records, name, color); await get().load(); return c },
+    async newCollection(name, color) { const c = await createCollection(deps.records, name, color); await get().load(); store.setState({ justCreated: c.id }); return c },
     async renameCollection(id, name) { await renameCollection(deps.records, id, name); await get().load() },
     async recolorCollection(id, color) { await recolorCollection(deps.records, id, color); await get().load() },
     async reorderCollections(ids) {

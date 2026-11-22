@@ -5,7 +5,7 @@ import { TAG_COLOURS, TAG_LABELS } from '../motion'
 const TAGS: BookTag[] = ['novel', 'manga', 'webtoon', 'comic', 'document']
 export function TypeChips({ types, onToggle }: { types: BookTag[]; onToggle(t: BookTag): void }) {
   return (
-    <div className="chips" role="group" aria-label="Show types">
+    <div className={`chips ${types.length ? 'filtering' : ''}`} role="group" aria-label="Show types">
       {TAGS.map((t) => {
         const on = types.includes(t)
         return (

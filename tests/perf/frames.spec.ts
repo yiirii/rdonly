@@ -38,6 +38,14 @@ test('animation frame times on a 4x-slowed phone', async ({ page }) => {
   await page.waitForTimeout(700)
   const sheet = stats(await stopRecording(page))
 
+  // Library: switch status tabs (jelly pill + shelf reflow), then filter by type chip.
+  await startRecording(page)
+  for (const name of [/Not started/, /Finished/, /^All/]) { await page.getByRole('tab', { name }).click(); await page.waitForTimeout(550) }
+  const tabSwitch = stats(await stopRecording(page))
+  await startRecording(page)
+  for (const name of ['Comic', 'Manga', 'Comic', 'Manga']) { await page.getByRole('checkbox', { name }).click(); await page.waitForTimeout(500) }
+  const filter = stats(await stopRecording(page))
+
   // Page turns: comic (transform slide) and novel (foliate paginator).
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
   const turns = async (fixture: string, ready: string) => {
@@ -69,11 +77,13 @@ test('animation frame times on a 4x-slowed phone', async ({ page }) => {
   const foldTurn = stats(await stopRecording(page))
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
 
-  const result = { version: process.env.npm_package_version ?? 'dev', cpuThrottle: 4, viewport: '390x844', cardsEnter: cards, settingsSheet: sheet, comicPageTurn: comicTurn, novelPageTurn: novelTurn, novelFoldTurn: foldTurn }
+  const result = { version: process.env.npm_package_version ?? 'dev', cpuThrottle: 4, viewport: '390x844', cardsEnter: cards, settingsSheet: sheet, tabSwitch, filter, comicPageTurn: comicTurn, novelPageTurn: novelTurn, novelFoldTurn: foldTurn }
   mkdirSync('docs/perf', { recursive: true })
   writeFileSync(process.env.PERF_OUT ?? 'test-results/perf.json', JSON.stringify(result, null, 2))
   console.log(JSON.stringify(result))
   expect(sheet.p95).toBeLessThanOrEqual(24)
+  expect(tabSwitch.p95).toBeLessThanOrEqual(24)
+  expect(filter.p95).toBeLessThanOrEqual(24)
   expect(comicTurn.p95).toBeLessThanOrEqual(24)
   expect(foldTurn.p95).toBeLessThanOrEqual(24)
 })
