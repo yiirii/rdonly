@@ -56,6 +56,7 @@ export function createLibraryStore(deps: ImportDeps) {
   let queue: Promise<unknown> = Promise.resolve()
   let pending = 0
   let loadSeq = 0 // only the newest load may write its results
+  let reorderQueue: Promise<unknown> = Promise.resolve()
   const store = createStore<LibraryState>()((set, get) => ({
     loaded: false, all: [], books: [], progress: [], collections: [], items: [], sort: 'added', tab: 'all', types: [], search: '', busy: false, justCreated: null,
     async load() {
@@ -77,8 +78,12 @@ export function createLibraryStore(deps: ImportDeps) {
     async recolorCollection(id, color) { await recolorCollection(deps.records, id, color); await get().load() },
     async reorderCollections(ids) {
       const byId = new Map(get().collections.map((c) => [c.id, c]))
-      set({ collections: ids.map((id, i) => ({ ...byId.get(id)!, order: i })) }) // feels instant while dragging
-      await reorderCollections(deps.records, ids)
+      if (ids.some((id) => !byId.has(id))) return // a collection vanished mid-drag; the next load has the truth
+      set({ collections: ids.map((id, i) => ({ ...byId.get(id)!, order: i })) }) // feels instant
+      // One write at a time, in order, so overlapping reorders can't interleave into duplicate places.
+      const job = reorderQueue.then(() => reorderCollections(deps.records, ids))
+      reorderQueue = job.catch(() => {})
+      await job.catch(() => get().load())
     },
     async deleteCollection(id) { await deleteCollection(deps.records, id); if (get().tab === id) set({ tab: 'all' }); await get().load() },
     async setMembership(cid, bid, m) { await setMembership(deps.records, cid, bid, m); await get().load() },

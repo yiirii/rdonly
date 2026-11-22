@@ -51,6 +51,8 @@ body {
 }
 @media (max-width: 520px) { .shelf { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; } }
 .book { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* Off-screen covers skip style, layout and paint until scrolled near (big libraries stay light). */
+.shelf > .book, .shelf > .series-card { content-visibility: auto; contain-intrinsic-size: auto calc(230px * var(--cover, 1)); }
 .book-cover {
   position: relative; aspect-ratio: 2 / 3; border-radius: 6px 10px 10px 6px; overflow: hidden;
   background: var(--surface-2);

@@ -65,3 +65,16 @@ describe('overlapping loads', () => {
     expect(store.getState().books).toHaveLength(1)
   })
 })
+
+describe('reorder during a drag', () => {
+  it('overlapping reorders end in the last order with no duplicate places', async () => {
+    const { createLibraryStore } = await import('../../src/state/library')
+    const { memRecords, memFiles } = await import('./fakes')
+    const s = createLibraryStore({ records: memRecords(), files: memFiles() })
+    const a = await s.getState().newCollection('A'), b = await s.getState().newCollection('B'), c = await s.getState().newCollection('C')
+    await Promise.all([s.getState().reorderCollections([b.id, a.id, c.id]), s.getState().reorderCollections([c.id, b.id, a.id])])
+    await s.getState().load()
+    expect(s.getState().collections.map((x) => x.name)).toEqual(['C', 'B', 'A'])
+    expect(new Set(s.getState().collections.map((x) => x.order)).size).toBe(3)
+  })
+})

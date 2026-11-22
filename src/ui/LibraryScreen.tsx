@@ -9,7 +9,7 @@ import { libraryStore, summarize, useLibrary } from '../state/library'
 import { closeSeries, useRoute } from '../state/route'
 import { settingsStore, useSettings } from '../state/settings'
 import { BookActions } from './BookActions'
-import { BookCard, type SelectProps } from './BookCard'
+import { BookCard } from './BookCard'
 import { DropZone } from './DropZone'
 import { ImportButton } from './ImportButton'
 import { CollectionSheet } from './library/CollectionSheet'
@@ -57,7 +57,9 @@ export function LibraryScreen() {
   const progressOf = useMemo(() => new Map(s.progress.filter((p) => !p.deleted).map((p) => [p.id, p.percent])), [s.progress])
 
   const seriesKeyOpen = route.name === 'series' ? route.key : route.name === 'reader' ? route.series : undefined
-  const folderAll = useMemo(() => seriesKeyOpen ? queryLibrary({ books: s.all, progress: s.progress, collections: s.collections, items: s.items }, {}).items.find((i) => i.kind === 'series' && i.key === seriesKeyOpen) : undefined, [seriesKeyOpen, s.all, s.progress, s.collections, s.items])
+  // The open folder honours the current search/chips/tab; fall back to the whole series if none of it matches.
+  const folderFiltered = useMemo(() => seriesKeyOpen ? view.items.find((i) => i.kind === 'series' && i.key === seriesKeyOpen) : undefined, [seriesKeyOpen, view.items])
+  const folderAll = useMemo(() => !seriesKeyOpen ? undefined : folderFiltered ?? queryLibrary({ books: s.all, progress: s.progress, collections: s.collections, items: s.items }, {}).items.find((i) => i.kind === 'series' && i.key === seriesKeyOpen), [seriesKeyOpen, folderFiltered, s.all, s.progress, s.collections, s.items])
   const folder = folderAll?.kind === 'series' ? folderAll : undefined
   useEffect(() => { if (s.loaded && route.name === 'series' && !folder) closeSeries() }, [s.loaded, route.name, folder])
   useEffect(() => {
@@ -94,12 +96,13 @@ export function LibraryScreen() {
   }, [lib])
 
   // Selection: tap/click in selection mode, Ctrl-click to add, Shift-click for a range.
-  const visibleIds = useMemo(() => (folder ? folder.books : view.items.flatMap((i) => (i.kind === 'book' ? [i.book] : i.books))).map((b) => b.id), [folder, view.items])
+  // Only books you can see: volumes tucked inside a folder never join a Shift-range on the shelf.
+  const visibleIds = useMemo(() => (folder ? folder.books : view.items.flatMap((i) => (i.kind === 'book' ? [i.book] : []))).map((b) => b.id), [folder, view.items])
   const onSelect = useCallback((b: BookRecord, e: { shift: boolean; meta: boolean }) => {
     setSelecting(true)
     setSelected((cur) => {
-      if (e.shift && anchor.current) {
-        const a = visibleIds.indexOf(anchor.current), z = visibleIds.indexOf(b.id)
+      const a = anchor.current ? visibleIds.indexOf(anchor.current) : -1, z = visibleIds.indexOf(b.id)
+      if (e.shift && a >= 0 && z >= 0) {
         const range = visibleIds.slice(Math.min(a, z), Math.max(a, z) + 1)
         return [...new Set([...cur, ...range])]
       }
@@ -108,15 +111,16 @@ export function LibraryScreen() {
     })
   }, [visibleIds])
   useEffect(() => { if (selecting && selected.length === 0 && !anchor.current) setSelecting(false) }, [selecting, selected])
-  const select = (b: BookRecord): SelectProps => ({
-    selecting, selected: selected.includes(b.id), onSelect,
-    dragIds: (bk) => (selected.includes(bk.id) ? selected : [bk.id]),
-  })
+  // Stable callbacks + plain values, so a memoised card only re-renders when its own book changes.
+  const selectedRef = useRef(selected); selectedRef.current = selected
+  const dragIds = useCallback((bk: BookRecord) => (selectedRef.current.includes(bk.id) ? selectedRef.current : [bk.id]), [])
+  const selectedSet = useMemo(() => new Set(selected), [selected])
+  const onActions = useCallback((bk: BookRecord) => { setToast(null); setActionsFor(bk) }, [])
   const endSelection = () => { setSelecting(false); setSelected([]); anchor.current = null }
 
   const card = (b: BookRecord, i: number) => (
-    <BookCard key={b.id} book={b} index={i} progress={progressOf.get(b.id)} finished={view.status.get(b.id) === 'finished'} select={select(b)}
-      onActions={(bk) => { setToast(null); setActionsFor(bk) }} />
+    <BookCard key={b.id} book={b} index={i} progress={progressOf.get(b.id)} finished={view.status.get(b.id) === 'finished'}
+      selecting={selecting} selected={selectedSet.has(b.id)} onSelect={onSelect} dragIds={dragIds} onActions={onActions} />
   )
   const liveCount = s.all.filter((b) => !b.deleted).length
   const isEmptyLibrary = s.loaded && liveCount === 0

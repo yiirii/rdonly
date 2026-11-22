@@ -54,4 +54,23 @@ describe('collections', () => {
     await deleteBook(r, f, 'b1')
     expect(await r.list('collectionItems')).toHaveLength(0)
   })
+  it('re-adding a book always beats its own tombstone, even within the same millisecond', async () => {
+    const r = memRecords(); const fixed = () => 500
+    const c = await createCollection(r, 'Same ms', undefined, fixed)
+    await setMembership(r, c.id, 'b1', true, fixed)
+    await setMembership(r, c.id, 'b1', false, fixed)
+    const tomb = (await r.get<CollectionItemRecord>('collectionItems', `${c.id}:b1`))!
+    await setMembership(r, c.id, 'b1', true, fixed)
+    const live = (await r.get<CollectionItemRecord>('collectionItems', `${c.id}:b1`))!
+    expect(live.deleted).toBeFalsy()
+    expect(live.updatedAt).toBeGreaterThan(tomb.updatedAt)
+  })
+  it('reordering writes only the collections whose place changed', async () => {
+    const r = memRecords()
+    const a = await createCollection(r, 'A', undefined, now), b = await createCollection(r, 'B', undefined, now), c = await createCollection(r, 'C', undefined, now)
+    const before = (await r.get<CollectionRecord>('collections', a.id))!.updatedAt
+    await reorderCollections(r, [a.id, c.id, b.id], now)
+    expect((await r.get<CollectionRecord>('collections', a.id))!.updatedAt).toBe(before) // A stayed first: untouched, so a rename elsewhere still wins
+    expect((await r.get<CollectionRecord>('collections', c.id))!.order).toBe(1)
+  })
 })

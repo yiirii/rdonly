@@ -33,7 +33,11 @@ async function patch(r: RecordStore, id: string, p: Partial<CollectionRecord>, n
 export async function renameCollection(r: RecordStore, id: string, name: string, now = Date.now) { await patch(r, id, { name: await checkName(r, name, id) }, now) }
 export async function recolorCollection(r: RecordStore, id: string, color: string, now = Date.now) { await patch(r, id, { color }, now) }
 export async function reorderCollections(r: RecordStore, ids: string[], now = Date.now) {
-  for (const [i, id] of ids.entries()) await patch(r, id, { order: i }, now)
+  for (const [i, id] of ids.entries()) {
+    const c = await r.get<CollectionRecord>('collections', id)
+    if (!c || c.deleted || c.order === i) continue // untouched records keep their updatedAt, so edits made elsewhere still win in sync
+    await patch(r, id, { order: i }, now)
+  }
 }
 
 export async function deleteCollection(r: RecordStore, id: string, now = Date.now) {
@@ -44,8 +48,10 @@ export async function deleteCollection(r: RecordStore, id: string, now = Date.no
 
 export async function setMembership(r: RecordStore, collectionId: string, bookId: string, member: boolean, now = Date.now) {
   const id = `${collectionId}:${bookId}`
-  if (member) await r.put<CollectionItemRecord>('collectionItems', { id, collectionId, bookId, updatedAt: now() })
-  else if (await r.get('collectionItems', id)) await r.remove('collectionItems', id)
+  const prev = await r.get<CollectionItemRecord>('collectionItems', id)
+  // Always newer than whatever was there before (including its own tombstone), so a re-add survives sync.
+  if (member) await r.put<CollectionItemRecord>('collectionItems', { id, collectionId, bookId, updatedAt: Math.max(now(), (prev?.updatedAt ?? 0) + 1) })
+  else if (prev && !prev.deleted) await r.remove('collectionItems', id)
 }
 export async function addBooksTo(r: RecordStore, collectionId: string, bookIds: string[], now = Date.now) {
   for (const b of bookIds) await setMembership(r, collectionId, b, true, now)
