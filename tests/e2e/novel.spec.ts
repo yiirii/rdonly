@@ -47,8 +47,8 @@ test('the Aa sheet changes theme and text size', async ({ page }) => {
   await page.getByTestId('font-size-up').click()
   await page.getByTestId('font-size-up').click()
   await expect.poll(() => bookFrame(page).evaluate(() => parseFloat(getComputedStyle(document.body).fontSize))).toBeGreaterThan(sizeBefore)
-  await page.getByTestId('font-lora').click()
-  await expect.poll(() => bookFrame(page).evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Lora')
+  await page.getByTestId('font-vollkorn').click()
+  await expect.poll(() => bookFrame(page).evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Vollkorn')
 })
 
 test('reopening returns to the same place', async ({ page }) => {

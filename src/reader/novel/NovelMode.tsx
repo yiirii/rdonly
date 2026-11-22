@@ -3,7 +3,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { settingsStore, useSettings, type Settings } from '../../state/settings'
 import type { ReaderModeProps } from '../types'
 import { closeReader } from '../../state/route'
-import { FONTS, fontFaces } from './fonts'
+import { fontFaces } from './fonts'
+import { fontById } from './fontList'
 import { ReadingSettings } from './ReadingSettings'
 import { themeById } from './themes'
 import { createGlide } from './glide'
@@ -15,14 +16,25 @@ type FoliateView = HTMLElement & {
 }
 type Relocate = { cfi: string; fraction: number; tocItem?: { label?: string } }
 
-function bookCss(s: Pick<Settings, 'theme' | 'font' | 'fontSize'>) {
+const MARGINS = { narrow: { margin: '32px', gap: '4%', inline: '760px' }, normal: { margin: '44px', gap: '7%', inline: '640px' }, wide: { margin: '56px', gap: '12%', inline: '560px' } }
+
+/** Page geometry: margins and how many columns fit side by side. */
+function applyLayout(r: HTMLElement, s: Pick<Settings, 'margins' | 'columns'>) {
+  const m = MARGINS[s.margins] ?? MARGINS.normal
+  r.setAttribute('margin', m.margin); r.setAttribute('gap', m.gap)
+  r.setAttribute('max-inline-size', m.inline); r.setAttribute('max-column-count', s.columns ? '2' : '1')
+}
+
+function bookCss(s: Pick<Settings, 'theme' | 'font' | 'fontSize' | 'lineHeight'>) {
   const t = themeById(s.theme)
-  const family = FONTS.find((f) => f.id === s.font)?.family
+  const f = fontById(s.font)
+  const family = f.family
   return `${fontFaces()}
 html { background: ${t.bg} !important; color: ${t.fg} !important; color-scheme: ${t.tone}; }
-body { color: ${t.fg} !important; background: transparent !important; font-size: ${s.fontSize}% !important; line-height: 1.6;
+body { color: ${t.fg} !important; background: transparent !important; font-size: ${Math.round(s.fontSize * f.scale)}% !important;
   ${family ? `font-family: ${family} !important;` : ''} -webkit-font-smoothing: antialiased; }
-${family ? `p, li, blockquote, dd, span, div { font-family: inherit !important; }` : ''}
+${family ? `p, li, blockquote, dd, span, div, h1, h2, h3, h4 { font-family: inherit !important; }` : ''}
+body, p, li, blockquote, dd { line-height: ${s.lineHeight} !important; }
 p { hyphens: auto; -webkit-hyphens: auto; }
 a:any-link { color: ${t.link} !important; }
 ::selection { background: ${t.selection}; }
@@ -37,7 +49,7 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   const [layout, setLayout] = useState<'reflow' | 'fixed'>()
   const [fraction, setFraction] = useState(initial?.percent ?? 0)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const s = useSettings(useShallow((x) => ({ theme: x.theme, font: x.font, fontSize: x.fontSize })))
+  const s = useSettings(useShallow((x) => ({ theme: x.theme, font: x.font, fontSize: x.fontSize, lineHeight: x.lineHeight, margins: x.margins, columns: x.columns })))
   const theme = themeById(s.theme)
   const toggle = useRef(chrome.toggle); toggle.current = chrome.toggle
   const revealRef = useRef(chrome.reveal); revealRef.current = chrome.reveal
@@ -66,8 +78,7 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
       const r = v.renderer
       if (!v.isFixedLayout) {
         r.setAttribute('flow', 'paginated')
-        r.setAttribute('margin', '44px'); r.setAttribute('gap', '7%')
-        r.setAttribute('max-inline-size', '640px'); r.setAttribute('max-column-count', '2')
+        applyLayout(r, settingsStore.getState())
       }
       setLayout(v.isFixedLayout ? 'fixed' : 'reflow')
       r.setStyles?.(bookCss(settingsStore.getState()))
@@ -115,7 +126,8 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   }, [file])
 
   // Live style changes.
-  useEffect(() => { view.current?.renderer?.setStyles?.(bookCss(s)) }, [s.theme, s.font, s.fontSize]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { view.current?.renderer?.setStyles?.(bookCss(s)) }, [s.theme, s.font, s.fontSize, s.lineHeight]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { const v = view.current; if (v && !v.isFixedLayout) applyLayout(v.renderer, s) }, [s.margins, s.columns]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {

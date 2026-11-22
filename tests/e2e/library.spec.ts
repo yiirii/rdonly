@@ -39,3 +39,10 @@ test('importing the same file twice keeps one card', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText('already in your library')
   await expect(page.getByTestId('book-card')).toHaveCount(1)
 })
+
+test('book titles in the library are set in Newsreader', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('import-input').setInputFiles(['tests/fixtures/novel.epub'])
+  await expect(page.getByTestId('book-card')).toHaveCount(1)
+  await expect.poll(() => page.evaluate(() => document.fonts.check("15px 'Newsreader'") && [...document.fonts].some((f) => f.family.replace(/'/g, '') === 'Newsreader' && f.status === 'loaded'))).toBe(true)
+})
