@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 — 2026-11-23
+A library you can organise.
+- **Continue reading:** a big card for the book you were last in, tinted to match its cover. Resume drops you straight back in.
+- **Tabs:** All · Reading · Not started · Finished, then your own collections. A book can sit in as many collections as you like.
+- **Collections:** make one with **+**, give it a colour, rename, recolour or delete it (right-click on the laptop, press and hold on the phone), drag tabs to reorder.
+- **Find things fast:** search titles, authors, series and your own tags (press / on the laptop); type chips to show only manga, comics and so on; sort by recently added, recently read or title.
+- **Progress on every cover**, turning green when you finish. Mark a book finished (or not) yourself from its menu.
+- **Select several books** (Ctrl/Shift-click, or Select from a book's menu) to add them to a collection, tag them or delete them together. Drag covers onto a tab to add them.
+- **Cover size slider**, and a clear Settings button.
+- On the phone the Continue card scrolls away and the search and tabs stay pinned at the top.
+- Playful touches: shapes that bounce in the Continue card, a squishy tab highlight, covers that tilt in, chips that shrink to dots while filtering, and a little burst of squares when you make a collection. All calm down to simple fades if your device asks for reduced motion.
+- Fixed: tapping right after closing a sheet sometimes did nothing.
+
 ## 0.3.0 — 2026-11-22
 Reading that looks the way you want.
 - **Seven curated fonts:** Newsreader (new default), Vollkorn, Spectral, Instrument Sans, Funnel Sans, Host Grotesk, Atkinson Hyperlegible — plus the book's own. All work offline.

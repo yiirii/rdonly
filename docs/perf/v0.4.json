@@ -1,0 +1,47 @@
+{
+  "version": "0.4.0",
+  "cpuThrottle": 4,
+  "viewport": "390x844",
+  "cardsEnter": {
+    "frames": 107,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 100
+  },
+  "settingsSheet": {
+    "frames": 105,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 50
+  },
+  "tabSwitch": {
+    "frames": 116,
+    "p50": 16.7,
+    "p95": 16.7,
+    "max": 33.3
+  },
+  "filter": {
+    "frames": 143,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 83.4
+  },
+  "comicPageTurn": {
+    "frames": 114,
+    "p50": 16.7,
+    "p95": 16.7,
+    "max": 16.8
+  },
+  "novelPageTurn": {
+    "frames": 112,
+    "p50": 16.7,
+    "p95": 16.7,
+    "max": 16.8
+  },
+  "novelFoldTurn": {
+    "frames": 135,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 16.8
+  }
+}
