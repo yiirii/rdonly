@@ -8,6 +8,7 @@ import { fontById } from './fontList'
 import { ReadingSettings } from './ReadingSettings'
 import { themeById } from './themes'
 import { createGlide } from './glide'
+import { createFold } from './fold'
 
 type FoliateView = HTMLElement & {
   open(f: Blob): Promise<void>; init(o: { lastLocation?: string; showTextStart?: boolean }): Promise<void>
@@ -49,16 +50,24 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   const [layout, setLayout] = useState<'reflow' | 'fixed'>()
   const [fraction, setFraction] = useState(initial?.percent ?? 0)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const s = useSettings(useShallow((x) => ({ theme: x.theme, font: x.font, fontSize: x.fontSize, lineHeight: x.lineHeight, margins: x.margins, columns: x.columns })))
+  const s = useSettings(useShallow((x) => ({ theme: x.theme, font: x.font, fontSize: x.fontSize, lineHeight: x.lineHeight, margins: x.margins, columns: x.columns, pageTurn: x.pageTurn })))
   const theme = themeById(s.theme)
   const toggle = useRef(chrome.toggle); toggle.current = chrome.toggle
   const revealRef = useRef(chrome.reveal); revealRef.current = chrome.reveal
   const glide = useRef(createGlide(() => host.current, () => matchMedia('(prefers-reduced-motion: reduce)').matches)).current
   /** Taps, keys and clicks glide; touch swipes keep foliate's own finger-following scroll. */
+  const box = useRef<HTMLDivElement>(null)
+  const fold = useRef(createFold(() => box.current, () => {
+    const t = themeById(settingsStore.getState().theme)
+    return t.tone === 'light' ? { bg: t.bg, crease: 'rgba(0,0,0,.07)', edge: 'rgba(0,0,0,.14)' } : { bg: t.bg, crease: 'rgba(255,255,255,.05)', edge: 'rgba(255,255,255,.12)' }
+  }, () => matchMedia('(prefers-reduced-motion: reduce)').matches)).current
   const turn = (v: FoliateView, side: 'left' | 'right') => {
-    v.renderer.removeAttribute('animated') // a tap is never a swipe: no hidden scroll animation under the glide
+    v.renderer.removeAttribute('animated') // a tap is never a swipe: no hidden scroll animation under the page turn
+    const go = () => (side === 'left' ? v.goLeft() : v.goRight())
+    const style = settingsStore.getState().pageTurn
+    if (style === 'scroll' || v.isFixedLayout && style !== 'glide') return go()
     // The motion follows the side you pressed (works the same for right-to-left books).
-    return glide(side === 'right' ? 1 : -1, () => (side === 'left' ? v.goLeft() : v.goRight()))
+    return (style === 'fold' ? fold : glide)(side === 'right' ? 1 : -1, go)
   }
   const turnRef = useRef(turn); turnRef.current = turn
 
@@ -77,7 +86,7 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
       if (!alive) return
       const r = v.renderer
       if (!v.isFixedLayout) {
-        r.setAttribute('flow', 'paginated')
+        r.setAttribute('flow', settingsStore.getState().pageTurn === 'scroll' ? 'scrolled' : 'paginated')
         applyLayout(r, settingsStore.getState())
       }
       setLayout(v.isFixedLayout ? 'fixed' : 'reflow')
@@ -128,6 +137,10 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   // Live style changes.
   useEffect(() => { view.current?.renderer?.setStyles?.(bookCss(s)) }, [s.theme, s.font, s.fontSize, s.lineHeight]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const v = view.current; if (v && !v.isFixedLayout) applyLayout(v.renderer, s) }, [s.margins, s.columns]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const v = view.current
+    if (v && !v.isFixedLayout) v.renderer.setAttribute('flow', s.pageTurn === 'scroll' ? 'scrolled' : 'paginated')
+  }, [s.pageTurn])
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -148,7 +161,7 @@ export function NovelMode({ book, file, initial, onProgress, chrome, setChromeEx
   }, [theme.tone, fraction, setChromeExtras])
 
   return (
-    <div className={`novel ${theme.tone}`} data-testid="novel" data-cfi={cfi} data-layout={layout} style={{ background: theme.bg, color: theme.fg }}>
+    <div ref={box} className={`novel ${theme.tone}`} data-testid="novel" data-cfi={cfi} data-layout={layout} style={{ background: theme.bg, color: theme.fg }}>
       <div className="novel-host" ref={host} />
       <ReadingSettings open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
