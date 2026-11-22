@@ -24,7 +24,7 @@ export function BookActions({ book, onClose, onSelect }: { book: BookRecord | nu
   return (
     <AnimatePresence>
       {book && (
-        <motion.div className="scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div className="scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1, pointerEvents: 'auto' }} exit={{ opacity: 0, pointerEvents: 'none' }}>
           <motion.section role="dialog" aria-modal="true" aria-label={book.title} className="sheet card actions-sheet" data-testid="book-actions"
             onClick={(e) => e.stopPropagation()}
             initial={reduce ? { opacity: 0 } : { y: '100%' }} animate={reduce ? { opacity: 1 } : { y: 0 }} exit={reduce ? { opacity: 0 } : { y: '100%' }} transition={sheet}>

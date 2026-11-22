@@ -148,7 +148,7 @@ export function LibraryScreen() {
       )}
 
       {hasBooks && !folder && (
-        <div className="lib-top">
+        <div className={`lib-top ${view.lastRead ? 'has-continue' : ''}`}>
           {view.lastRead && <ContinueCard book={view.lastRead} progress={view.lastReadProgress} />}
           <div className="lib-controls">
             <div className="lib-sticky">

@@ -32,8 +32,10 @@ export function LibraryTabs({ tab, counts, collections, onTab, onNew, onTabMenu,
           {collections.map((c) => (
             <Reorder.Item as="div" key={c.id} value={c.id} className="tab-item"
               onContextMenu={(e) => { e.preventDefault(); onTabMenu(c, { x: e.clientX, y: e.clientY }) }}
-              onPointerDown={(e) => { const at = { x: e.clientX, y: e.clientY }; press = setTimeout(() => onTabMenu(c, at), 520) }}
-              onPointerUp={() => clearTimeout(press)} onPointerLeave={() => clearTimeout(press)} onDragStart={() => clearTimeout(press)}>
+              onPointerDown={(e) => { // long-press is for touch; a mouse uses right-click
+                clearTimeout(press); if (e.pointerType === 'mouse') return
+                const at = { x: e.clientX, y: e.clientY }; press = setTimeout(() => onTabMenu(c, at), 520) }}
+              onPointerUp={() => clearTimeout(press)} onPointerCancel={() => clearTimeout(press)} onPointerLeave={() => clearTimeout(press)} onDragStart={() => clearTimeout(press)}>
               {button(c.id, c.name, c.color)}
             </Reorder.Item>
           ))}

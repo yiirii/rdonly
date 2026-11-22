@@ -306,7 +306,7 @@ button.book:focus-visible .book-cover { outline: 2px solid var(--accent); outlin
 @media (max-width: 520px) { .settings-btn .settings-label { display: none; } .settings-btn { padding: 9px; } }
 
 .lib-top { display: grid; gap: 14px; padding: 6px 20px 4px; }
-@media (min-width: 900px) { .lib-top { grid-template-columns: minmax(380px, 440px) 1fr; align-items: start; } }
+@media (min-width: 900px) { .lib-top.has-continue { grid-template-columns: minmax(380px, 440px) 1fr; align-items: start; } }
 .lib-controls { min-width: 0; display: grid; gap: 8px; }
 @media (max-width: 899px) {
   /* Flatten so the sticky bar belongs to the whole page, not to a box that scrolls away. */
@@ -391,8 +391,9 @@ button.book:focus-visible .book-cover { outline: 2px solid var(--accent); outlin
 .select-bead.on { background: var(--accent); box-shadow: inset 0 -2px 0 rgba(0,0,0,.25); }
 .select-bead svg { width: 15px; height: 15px; }
 button.book[data-selected] .book-cover { outline: 3px solid var(--accent); outline-offset: 3px; }
-.selection-bar { position: fixed; z-index: 36; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); translate: -50% 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px;
-  max-width: calc(100vw - 24px); background: var(--surface-2); box-shadow: inset 0 1px 0 var(--edge), 0 4px 0 var(--lip); border-radius: 16px; }
+/* left+right with auto margins centres it without halving the room it can grow into */
+.selection-bar { position: fixed; z-index: 36; left: 12px; right: 12px; margin-inline: auto; width: fit-content; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 10px 12px;
+  background: var(--surface-2); box-shadow: inset 0 1px 0 var(--edge), 0 4px 0 var(--lip); border-radius: 16px; }
 .sel-count { min-width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: #0f1420; font: 700 13px var(--font-ui); padding: 0 6px; }
 .sel-label { font-size: 14px; color: var(--text-dim); margin-right: 4px; }
 .selection-bar .keycap { display: inline-flex; align-items: center; padding: 8px 12px; font-size: 14px; }
@@ -415,3 +416,5 @@ button.book[data-selected] .book-cover { outline: 3px solid var(--accent); outli
 /* Empty / no results */
 .no-results { text-align: center; padding: 40px 28px; color: var(--text-dim); max-width: 380px; margin: 0 auto; }
 .empty-art.small { width: 150px; margin-bottom: 8px; }
+
+@media (max-width: 520px) { .selection-bar .sel-label { display: none; } .selection-bar { gap: 6px; padding: 8px; } .selection-bar .keycap { padding: 8px 10px; } }

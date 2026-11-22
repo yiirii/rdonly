@@ -33,7 +33,7 @@ export function CollectionSheet({ open, editing, onClose, onCreated }: { open: b
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div className="scrim" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1, pointerEvents: 'auto' }} exit={{ opacity: 0, pointerEvents: 'none' }}>
           <motion.section role="dialog" aria-modal="true" aria-label={editing ? `Edit ${editing.name}` : 'New collection'} className="sheet card small-sheet"
             onClick={(e) => e.stopPropagation()}
             initial={reduce ? { opacity: 0 } : { y: '100%' }} animate={reduce ? { opacity: 1 } : { y: 0 }} exit={reduce ? { opacity: 0 } : { y: '100%' }} transition={sheet}>
