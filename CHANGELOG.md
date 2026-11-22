@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-11-22
+Reading that looks the way you want.
+- **Seven curated fonts:** Newsreader (new default), Vollkorn, Spectral, Instrument Sans, Funnel Sans, Host Grotesk, Atkinson Hyperlegible — plus the book's own. All work offline.
+- **14 page colours:** Paper, Linen, Sepia, Parchment, Rose, Sage, Mist, Dusk, Slate, Night, Ink, Forest, Ember, OLED — every one kept comfortable on the eyes.
+- **New Aa sheet:** colours, fonts (shown in their own typeface), text size, line spacing, margins, and a two-column switch on the laptop. On the laptop it sits on the right so you can watch the page change.
+- **Page-turn styles:** Glide (default), Fold (a flat sheet sweeps across) or Scroll (read a chapter as one long page). Each device keeps its own choice.
+- Book titles in the library now use Newsreader.
+
 ## 0.2.1 — 2026-11-22
 - **Proper Windows installer:** replaces any older version when you install, keeps your library, and puts a Rd Only icon on the desktop.
 - **Reader bars appear when the mouse nears the top or bottom edge,** and stay while you're over them.

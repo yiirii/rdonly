@@ -1,0 +1,35 @@
+{
+  "version": "0.3.0",
+  "cpuThrottle": 4,
+  "viewport": "390x844",
+  "cardsEnter": {
+    "frames": 112,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 50.1
+  },
+  "settingsSheet": {
+    "frames": 104,
+    "p50": 16.7,
+    "p95": 16.7,
+    "max": 66.6
+  },
+  "comicPageTurn": {
+    "frames": 114,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 33.4
+  },
+  "novelPageTurn": {
+    "frames": 112,
+    "p50": 16.7,
+    "p95": 16.7,
+    "max": 16.8
+  },
+  "novelFoldTurn": {
+    "frames": 136,
+    "p50": 16.7,
+    "p95": 16.8,
+    "max": 16.8
+  }
+}

@@ -56,10 +56,24 @@ test('animation frame times on a 4x-slowed phone', async ({ page }) => {
   const comicTurn = await turns('plain.cbz', '[data-testid="comic-page"] img')
   const novelTurn = await turns('long.epub', '[data-testid="novel"][data-cfi]')
 
-  const result = { version: process.env.npm_package_version ?? 'dev', cpuThrottle: 4, viewport: '390x844', cardsEnter: cards, settingsSheet: sheet, comicPageTurn: comicTurn, novelPageTurn: novelTurn }
+  // Fold page turn on a novel
+  await page.getByTestId('book-card').filter({ hasText: 'The Long Road' }).click()
+  await page.locator('[data-testid="novel"][data-cfi]').waitFor({ timeout: 15000 })
+  if (await page.getByTestId('reading-settings-button').count() === 0) await page.mouse.click(195, 422)
+  await page.getByTestId('reading-settings-button').click()
+  await page.getByRole('radio', { name: 'Fold' }).click()
+  await page.keyboard.press('Escape'); await page.waitForTimeout(600)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+  await startRecording(page)
+  for (let i = 0; i < 4; i++) { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(550) }
+  const foldTurn = stats(await stopRecording(page))
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+
+  const result = { version: process.env.npm_package_version ?? 'dev', cpuThrottle: 4, viewport: '390x844', cardsEnter: cards, settingsSheet: sheet, comicPageTurn: comicTurn, novelPageTurn: novelTurn, novelFoldTurn: foldTurn }
   mkdirSync('docs/perf', { recursive: true })
   writeFileSync(process.env.PERF_OUT ?? 'test-results/perf.json', JSON.stringify(result, null, 2))
   console.log(JSON.stringify(result))
   expect(sheet.p95).toBeLessThanOrEqual(24)
   expect(comicTurn.p95).toBeLessThanOrEqual(24)
+  expect(foldTurn.p95).toBeLessThanOrEqual(24)
 })
