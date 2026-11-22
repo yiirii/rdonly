@@ -1,14 +1,19 @@
 import type { FileStore, RecordStore } from '../storage/types'
 import type { BookRecord } from './types'
 
-export type BookPatch = Partial<Pick<BookRecord, 'title' | 'author' | 'series' | 'volume' | 'tag' | 'modeOverride'>>
+export type BookPatch = Partial<Pick<BookRecord, 'title' | 'author' | 'series' | 'volume' | 'tag' | 'modeOverride' | 'tags' | 'finished'>>
 
 export async function updateBook(records: RecordStore, id: string, patch: BookPatch, now: () => number = Date.now): Promise<BookRecord> {
   const cur = await records.get<BookRecord>('books', id)
   if (!cur || cur.deleted) throw new Error('Book not found')
   const next: BookRecord = { ...cur }
   for (const [k, v] of Object.entries(patch) as [keyof BookPatch, unknown][]) {
-    const val = typeof v === 'string' ? v.trim() : v
+    let val = typeof v === 'string' ? v.trim() : v
+    if (Array.isArray(val)) { // tags: trimmed, no blanks, no duplicates (ignoring case)
+      const seen = new Set<string>()
+      val = val.map((t) => String(t).trim().replace(/\s+/g, ' ')).filter((t) => t && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()))
+      if (!(val as string[]).length) val = undefined
+    }
     if (val === '' || val === undefined || (typeof val === 'number' && !Number.isFinite(val))) delete (next as unknown as Record<string, unknown>)[k]
     else (next as unknown as Record<string, unknown>)[k] = val
   }
@@ -24,4 +29,7 @@ export async function deleteBook(records: RecordStore, files: FileStore, id: str
   await files.remove(id)
   await records.remove('books', id)
   if (await records.get('progress', id)) await records.remove('progress', id)
+  for (const it of await records.list<{ id: string; bookId: string } & import('../storage/types').BaseRecord>('collectionItems')) {
+    if (it.bookId === id) await records.remove('collectionItems', it.id)
+  }
 }

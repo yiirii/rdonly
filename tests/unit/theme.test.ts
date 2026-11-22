@@ -18,7 +18,7 @@ describe('animation rules', () => {
   it('only transitions transform or opacity', () => {
     const transitions = [...css.matchAll(/transition\s*:\s*([^;]+);/g)].map((m) => m[1])
     for (const t of transitions) {
-      if (/^\s*[\d.]+m?s\b/.test(t) || t.includes('!important')) continue // duration-only overrides
+      if (/^\s*[\d.]+m?s\b/.test(t) || t.includes('!important') || t.trim() === 'none') continue // duration-only overrides; 'none' animates nothing
       for (const part of t.split(/,(?![^(]*\))/)) expect(part.trim().split(/\s+/)[0]).toMatch(/^(transform|opacity)$/)
     }
   })

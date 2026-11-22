@@ -10,6 +10,10 @@ export interface BookRecord extends BaseRecord {
   format: BookFormat
   tag: BookTag
   modeOverride?: string
+  /** the reader's own words for the book, e.g. 'fantasy', 'cosy' */
+  tags?: string[]
+  /** manual 'Mark as finished / not finished'; undefined = worked out from progress */
+  finished?: boolean
   /** data URL of a ≤40KB thumbnail; synced so other devices can show the cover */
   coverThumb?: string
   fileName: string

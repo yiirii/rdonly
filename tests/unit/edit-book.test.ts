@@ -43,3 +43,17 @@ describe('deleteBook', () => {
     expect(await r.list('books')).toHaveLength(0)
   })
 })
+
+describe('tags and finished', () => {
+  it('cleans tags: trimmed, no blanks or duplicates', async () => {
+    const r = memRecords(); await r.put('books', book())
+    const out = await updateBook(r, 'b1', { tags: [' Fantasy ', 'fantasy', '', 'cosy  read'] })
+    expect(out.tags).toEqual(['Fantasy', 'cosy read'])
+  })
+  it('an empty tag list removes tags; finished can be set and cleared', async () => {
+    const r = memRecords(); await r.put('books', { ...book(), tags: ['x'] })
+    expect((await updateBook(r, 'b1', { tags: [] })).tags).toBeUndefined()
+    expect((await updateBook(r, 'b1', { finished: true })).finished).toBe(true)
+    expect((await updateBook(r, 'b1', { finished: undefined })).finished).toBeUndefined()
+  })
+})
