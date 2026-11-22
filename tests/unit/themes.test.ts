@@ -35,6 +35,10 @@ describe('settings', () => {
     expect(normalizeSettings({ font: 'literata', theme: 'paper', lineHeight: 9, margins: 'huge', pageTurn: 'slide' }))
       .toMatchObject({ font: 'newsreader', theme: 'paper', lineHeight: 1.6, margins: 'normal', pageTurn: 'glide' })
   })
+  it('text size outside what the buttons allow falls back (70–180)', () => {
+    expect(normalizeSettings({ fontSize: 190 }).fontSize).toBe(100)
+    expect(normalizeSettings({ fontSize: 180 }).fontSize).toBe(180)
+  })
   it('size, page turn, columns and haptics stay on this device', () => {
     expect(LOCAL_ONLY_SETTINGS).toEqual(expect.arrayContaining(['fontSize', 'pageTurn', 'columns', 'haptics']))
     expect(LOCAL_ONLY_SETTINGS).not.toContain('theme')

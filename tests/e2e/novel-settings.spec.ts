@@ -78,3 +78,10 @@ test('a font saved by an older version falls back to Newsreader', async ({ page 
   await expect(page.getByTestId('novel')).toHaveAttribute('data-cfi', /^epubcfi/, { timeout: 15000 })
   await expect.poll(() => body(page, 'font-family')).toContain('Newsreader')
 })
+
+test('the two-column switch has a name screen readers can announce', async ({ page }) => {
+  test.skip(test.info().project.name !== 'laptop')
+  await open(page)
+  await openSheet(page)
+  await expect(page.getByRole('switch', { name: 'Two pages side by side' })).toBeVisible()
+})

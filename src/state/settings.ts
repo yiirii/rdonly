@@ -32,7 +32,7 @@ export function normalizeSettings(raw: Partial<Record<keyof Settings, unknown>>)
   }
   ok('theme', (v) => READING_THEMES.some((t) => t.id === v))
   ok('font', (v) => FONTS.some((f) => f.id === v))
-  ok('fontSize', (v) => typeof v === 'number' && v >= 70 && v <= 200)
+  ok('fontSize', (v) => typeof v === 'number' && v >= 70 && v <= 180)
   ok('lineHeight', (v) => v === 1.4 || v === 1.6 || v === 1.8)
   ok('margins', (v) => v === 'narrow' || v === 'normal' || v === 'wide')
   ok('columns', (v) => typeof v === 'boolean')

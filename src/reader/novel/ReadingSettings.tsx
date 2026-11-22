@@ -75,7 +75,7 @@ export function ReadingSettings({ open, onClose }: { open: boolean; onClose(): v
             {wide && (
               <div className="seg-row">
                 <span className="seg-label">Two pages side by side</span>
-                <button role="switch" aria-checked={s.columns} data-testid="columns-switch" className={`bead-switch ${s.columns ? 'on' : ''}`} onClick={() => set('columns', !s.columns)}>
+                <button role="switch" aria-label="Two pages side by side" aria-checked={s.columns} data-testid="columns-switch" className={`bead-switch ${s.columns ? 'on' : ''}`} onClick={() => set('columns', !s.columns)}>
                   <span className="bead" />
                 </button>
               </div>
