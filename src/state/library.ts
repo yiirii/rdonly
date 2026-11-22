@@ -6,13 +6,34 @@ import type { BookRecord, ImportResult } from '../library/types'
 import { getRecordStore } from '../storage/select'
 import { getFileStore } from '../storage/files'
 
-export type SortKey = 'recent' | 'title'
+import type { CollectionItemRecord, CollectionRecord, SortKey } from '../library/query'
+import type { ProgressRecord } from './progress'
+import { addBooksTo, createCollection, deleteCollection, liveCollections, recolorCollection, renameCollection, reorderCollections, setMembership } from '../library/collections'
+import type { BookTag } from '../core/tags'
+export type { SortKey }
 
 interface LibraryState {
   loaded: boolean
   all: BookRecord[]
   books: BookRecord[]
+  progress: ProgressRecord[]
+  collections: CollectionRecord[]
+  items: CollectionItemRecord[]
   sort: SortKey
+  tab: string
+  types: BookTag[]
+  search: string
+  setTab(t: string): void
+  toggleType(t: BookTag): void
+  setSearch(s: string): void
+  newCollection(name: string, color?: string): Promise<CollectionRecord>
+  renameCollection(id: string, name: string): Promise<void>
+  recolorCollection(id: string, color: string): Promise<void>
+  reorderCollections(ids: string[]): Promise<void>
+  deleteCollection(id: string): Promise<void>
+  setMembership(collectionId: string, bookId: string, member: boolean): Promise<void>
+  addToCollection(collectionId: string, bookIds: string[]): Promise<void>
+  removeMany(ids: string[]): Promise<void>
   busy: boolean
   load(): Promise<void>
   import(files: File[]): Promise<ImportResult[]>
@@ -23,7 +44,8 @@ interface LibraryState {
 }
 
 const sorters: Record<SortKey, (a: BookRecord, b: BookRecord) => number> = {
-  recent: (a, b) => b.addedAt - a.addedAt,
+  added: (a, b) => b.addedAt - a.addedAt,
+  read: (a, b) => b.addedAt - a.addedAt,
   title: (a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }),
 }
 const sorted = (all: BookRecord[], s: SortKey) => [...all].sort(sorters[s])
@@ -31,12 +53,35 @@ const sorted = (all: BookRecord[], s: SortKey) => [...all].sort(sorters[s])
 export function createLibraryStore(deps: ImportDeps) {
   let queue: Promise<unknown> = Promise.resolve()
   let pending = 0
+  let loadSeq = 0 // only the newest load may write its results
   const store = createStore<LibraryState>()((set, get) => ({
-    loaded: false, all: [], books: [], sort: 'recent', busy: false,
+    loaded: false, all: [], books: [], progress: [], collections: [], items: [], sort: 'added', tab: 'all', types: [], search: '', busy: false,
     async load() {
-      const all = await deps.records.list<BookRecord>('books')
-      set({ all, books: sorted(all, get().sort), loaded: true })
+      const my = ++loadSeq
+      const r = deps.records
+      const [all, progress, collections, items] = await Promise.all([
+        r.list<BookRecord>('books'), r.list<ProgressRecord>('progress'), liveCollections(r), r.list<CollectionItemRecord>('collectionItems'),
+      ])
+      if (my !== loadSeq) return
+      const tab = get().tab
+      const tabOk = ['all', 'reading', 'new', 'finished'].includes(tab) || collections.some((c) => c.id === tab)
+      set({ all, books: sorted(all, get().sort), progress, collections, items, loaded: true, ...(tabOk ? {} : { tab: 'all' }) })
     },
+    setTab(tab) { set({ tab }) },
+    toggleType(t) { const ts = get().types; set({ types: ts.includes(t) ? ts.filter((x) => x !== t) : [...ts, t] }) },
+    setSearch(search) { set({ search }) },
+    async newCollection(name, color) { const c = await createCollection(deps.records, name, color); await get().load(); return c },
+    async renameCollection(id, name) { await renameCollection(deps.records, id, name); await get().load() },
+    async recolorCollection(id, color) { await recolorCollection(deps.records, id, color); await get().load() },
+    async reorderCollections(ids) {
+      const byId = new Map(get().collections.map((c) => [c.id, c]))
+      set({ collections: ids.map((id, i) => ({ ...byId.get(id)!, order: i })) }) // feels instant while dragging
+      await reorderCollections(deps.records, ids)
+    },
+    async deleteCollection(id) { await deleteCollection(deps.records, id); if (get().tab === id) set({ tab: 'all' }); await get().load() },
+    async setMembership(cid, bid, m) { await setMembership(deps.records, cid, bid, m); await get().load() },
+    async addToCollection(cid, ids) { await addBooksTo(deps.records, cid, ids); await get().load() },
+    async removeMany(ids) { for (const id of ids) await deleteBook(deps.records, deps.files, id); await get().load() },
     /** Imports are queued: a drop during an import waits its turn instead of running alongside. */
     import(files) {
       return run(files.map((f) => ({ name: f.name, read: async () => new Uint8Array(await f.arrayBuffer()) })))
@@ -53,10 +98,9 @@ export function createLibraryStore(deps: ImportDeps) {
     },
     async remove(id) {
       await deleteBook(deps.records, deps.files, id)
-      const all = get().all.filter((x) => x.id !== id)
-      set({ all, books: sorted(all, get().sort) })
+      await get().load()
     },
-    setSort(sort) { set({ sort, books: sorted(get().all, sort) }) },
+    setSort(sort: SortKey) { set({ sort, books: sorted(get().all, sort) }) },
   }))
   function run(items: ImportItem[]) {
     pending++

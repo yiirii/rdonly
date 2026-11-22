@@ -17,11 +17,13 @@ export interface Settings {
   /** two columns side by side on wide screens */
   columns: boolean
   pageTurn: PageTurn
+  /** library cover size multiplier, per device */
+  coverSize: number
 }
-export const DEFAULT_SETTINGS: Settings = { theme: 'night', font: 'newsreader', fontSize: 100, lineHeight: 1.6, margins: 'normal', columns: true, pageTurn: 'glide' }
+export const DEFAULT_SETTINGS: Settings = { theme: 'night', font: 'newsreader', fontSize: 100, lineHeight: 1.6, margins: 'normal', columns: true, pageTurn: 'glide', coverSize: 1 }
 
 /** Settings that only make sense on this device and must never sync. */
-export const LOCAL_ONLY_SETTINGS = ['fontSize', 'pageTurn', 'columns', 'haptics', 'windowBounds', 'deviceId'] as const
+export const LOCAL_ONLY_SETTINGS = ['fontSize', 'pageTurn', 'columns', 'coverSize', 'haptics', 'windowBounds', 'deviceId'] as const
 
 /** Anything unknown (older versions, other devices) falls back to the default. */
 export function normalizeSettings(raw: Partial<Record<keyof Settings, unknown>>): Partial<Settings> {
@@ -37,6 +39,7 @@ export function normalizeSettings(raw: Partial<Record<keyof Settings, unknown>>)
   ok('margins', (v) => v === 'narrow' || v === 'normal' || v === 'wide')
   ok('columns', (v) => typeof v === 'boolean')
   ok('pageTurn', (v) => v === 'glide' || v === 'fold' || v === 'scroll')
+  ok('coverSize', (v) => typeof v === 'number' && v >= 0.75 && v <= 1.4)
   return out
 }
 const isLocal = (k: string) => (LOCAL_ONLY_SETTINGS as readonly string[]).includes(k)

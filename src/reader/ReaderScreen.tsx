@@ -82,7 +82,8 @@ export function ReaderScreen({ bookId }: { bookId: string }) {
       window.removeEventListener('pagehide', leave)
       window.removeEventListener('beforeunload', leave)
       unregister()
-      void saver.flush()
+      // Refresh the library once the last position is saved, so status and the Continue card are current.
+      void saver.flush().then(() => libraryStore().getState().load())
     }
   }, [saver])
 

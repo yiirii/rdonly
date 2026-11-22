@@ -21,7 +21,7 @@ describe('library store', () => {
     await store.getState().import([file('novel.epub'), file('manga.cbz')])
     store.getState().setSort('title')
     expect(store.getState().books.map((b) => b.title)).toEqual(['Test Manga Vol. 3', 'Test Novel'])
-    store.getState().setSort('recent')
+    store.getState().setSort('added')
     await store.getState().import([file('bare.epub')])
     expect(store.getState().books[0].title).toBe('bare')
     store.getState().setSort('title')
@@ -47,5 +47,21 @@ describe('import summary', () => {
     ])).toBe('Added 2 books. 1 was already in your library. Couldn’t open book.mobi.')
     expect(summarize([{ fileName: 'x.epub', status: 'relinked' }])).toBe('Restored the file for 1 book.')
     expect(summarize([{ fileName: 'a.epub', status: 'added' }])).toBe('Added 1 book.')
+  })
+})
+
+describe('overlapping loads', () => {
+  it('a slow older load never overwrites a newer one', async () => {
+    const records = memRecords()
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    const list = records.list
+    let first = true
+    records.list = (async (c: string, o?: { includeDeleted?: boolean }) => { if (c === 'books' && first) { first = false; const out = await list(c, o); await gate; return out } return list(c, o) }) as typeof records.list
+    const store = createLibraryStore({ records, files: memFiles(), thumb: async () => undefined })
+    const slow = store.getState().load()          // starts first, finishes last (sees an empty library)
+    await store.getState().import([file('novel.epub')])
+    release(); await slow
+    expect(store.getState().books).toHaveLength(1)
   })
 })
