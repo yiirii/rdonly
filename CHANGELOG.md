@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.2 — 2026-11-24
+- Big libraries: covers you can't see at that moment now appear and leave instantly, so switching tabs and filters is lighter. Everything on screen keeps its full animation.
+
 ## 0.4.1 — 2026-11-24
 - **Series folders look right again:** the covers fanned out behind the front one were being cut off.
 - **Smoother cover-size slider:** covers now grow and shrink with every tiny movement, and spare room is shared evenly so the grid stays balanced. Covers glide to their new spot when a column comes or goes. The size is saved even if you close the app straight away.

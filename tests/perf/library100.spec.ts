@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { writeFileSync } from 'node:fs'
 
 test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true })
-const stats = (f: number[]) => { const s = [...f].sort((a, b) => a - b); const q = (p: number) => s[Math.min(s.length - 1, Math.floor(p * s.length))]; return { frames: s.length, p50: +q(0.5).toFixed(1), p95: +q(0.95).toFixed(1), max: +s[s.length - 1].toFixed(1) } }
+const stats = (f: number[]) => { const s = [...f].sort((a, b) => a - b); const q = (p: number) => s[Math.min(s.length - 1, Math.floor(p * s.length))]; return { frames: s.length, p50: +q(0.5).toFixed(1), p95: +q(0.95).toFixed(1), max: +s[s.length - 1].toFixed(1), stuckMs: Math.round(f.reduce((a, x) => a + Math.max(0, x - 16.7), 0)) } }
 
 test('a 100-book library stays smooth on a 4x-slowed phone', async ({ page }) => {
   await page.goto('/#debug')

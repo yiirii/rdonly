@@ -1,4 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion'
+import { useRef } from 'react'
+import { useOnScreen } from './onScreen'
 import type { BookRecord } from '../library/types'
 import { openSeries } from '../state/route'
 import { PlaceholderCover } from './PlaceholderCover'
@@ -11,11 +13,15 @@ const Cover = ({ book }: { book: BookRecord }) =>
 export function SeriesCard({ name, seriesKey, books, index, cols }: { name: string; seriesKey: string; books: BookRecord[]; index: number; cols?: number }) {
   const reduce = useReducedMotion()
   const behind = books.slice(1, 3).reverse()
+  const ref = useRef<HTMLButtonElement>(null)
+  const { quiet, visibleNow } = useOnScreen(ref) // off-screen folders skip their entrance and exit
   return (
-    <motion.button type="button" layout={!reduce} layoutDependency={`${cols}:${index}`} className="book series" data-testid="series-card" aria-label={`Open series ${name}, ${books.length} books`}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-      transition={{ ...settle, delay: Math.min(index, 12) * 0.035 }}
+    <motion.button ref={ref} type="button" layout={!reduce} layoutDependency={`${cols}:${index}`} className="book series" data-testid="series-card" aria-label={`Open series ${name}, ${books.length} books`}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.96 }} animate="in" exit="leave"
+      variants={{
+        in: () => ({ opacity: 1, y: 0, scale: 1, transition: quiet.current ? { duration: 0 } : { ...settle, delay: Math.min(index, 12) * 0.035 } }),
+        leave: () => ({ opacity: 0, scale: visibleNow() ? 0.9 : 1, transition: { duration: visibleNow() ? 0.2 : 0 } }),
+      }}
       whileHover={reduce ? undefined : 'fan'} whileFocus={reduce ? undefined : 'fan'}
       onClick={() => openSeries(seriesKey)}>
       <div className="stack">

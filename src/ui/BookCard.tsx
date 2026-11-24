@@ -3,6 +3,7 @@ import { memo, useRef } from 'react'
 import type { BookRecord } from '../library/types'
 import { openBook } from '../state/route'
 import { setOpenOrigin } from '../reader/openOrigin'
+import { useOnScreen } from './onScreen'
 import { PlaceholderCover } from './PlaceholderCover'
 import { settle, TAG_COLOURS, TAG_LABELS } from './motion'
 
@@ -18,14 +19,21 @@ function BookCardImpl({ book, index, onActions, progress, finished, cols, select
   // Long-press (phone) or right-click (laptop) opens the book's actions instead of the book.
   const press = useRef<{ timer: ReturnType<typeof setTimeout>; fired: boolean; x: number; y: number } | null>(null)
   const cancelPress = () => { if (press.current) clearTimeout(press.current.timer) }
+  const ref = useRef<HTMLButtonElement>(null)
+  const { quiet, visibleNow } = useOnScreen(ref) // off-screen covers skip their entrance and exit
   return (
     <motion.button
+      ref={ref}
       type="button"
       layout={!reduce} layoutDependency={`${cols}:${index}`}
       className="book"
       data-testid="book-card"
       aria-label={`Open ${book.title}`}
-      exit={{ opacity: 0, scale: 0.15, rotate: 12, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
+      exit="leave"
+      variants={{
+        in: () => ({ opacity: 1, y: 0, rotate: 0, scale: 1, transition: quiet.current ? { duration: 0 } : { ...settle, delay: Math.min(index, 12) * 0.035 } }),
+        leave: () => (visibleNow() ? { opacity: 0, scale: 0.15, rotate: 12, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } } : { opacity: 0, transition: { duration: 0 } }),
+      }}
       onPointerDown={(e) => {
         if (e.button !== 0) return
         // Long-press opens the book's actions (which include "Select"); in selection mode it just selects.
@@ -55,8 +63,7 @@ function BookCardImpl({ book, index, onActions, progress, finished, cols, select
         setOpenOrigin(e.currentTarget.querySelector('.book-cover')!.getBoundingClientRect()); openBook(book.id)
       }}
       initial={reduce ? { opacity: 0 } : { opacity: 0, y: -18, rotate: index % 2 ? 4 : -4, scale: 0.94 }}
-      animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
-      transition={{ ...settle, delay: Math.min(index, 12) * 0.035 }}
+      animate="in"
     >
       <div className="book-cover">
         {book.coverThumb ? <img src={book.coverThumb} alt="" draggable={false} /> : <PlaceholderCover title={book.title} tag={book.tag} />}
