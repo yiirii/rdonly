@@ -26,6 +26,7 @@
     "@fontsource/spectral": "^5.3.0",
     "@fontsource/vollkorn": "^5.3.0",
     "fflate": "^0.8.3",
+    "firebase": "^12.19.0",
     "framer-motion": "^14.14.0",
     "idb": "^8.0.4",
     "libarchive.js": "^2.0.2",
