@@ -18,6 +18,10 @@ export interface SyncBackend {
 }
 
 const ON_KEY = 'rdonly.sync.on'
+/** The account this device's library belongs to; a different one must be confirmed before anything is copied to it. */
+const LAST_UID = 'rdonly.sync.lastUid'
+const lsGet = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
+const lsSet = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v) } catch { /* ignore */ } }
 let override: (() => Promise<SyncBackend>) | undefined
 /** Tests (#debug) swap Firebase for a stand-in cloud. */
 export function setSyncBackend(make: () => Promise<SyncBackend>) { override = make }
@@ -33,6 +37,10 @@ interface SyncStoreState {
   status: SyncStatus
   /** Set once we know whether someone is signed in (avoids a flash of the sign-in form). */
   known: boolean
+  /** Signed in with a different account than this device's library came from: waiting for "Add my library" or "Cancel". */
+  askMerge: boolean
+  confirmMerge(): void
+  cancelMerge(): Promise<void>
   signIn(email: string, pw: string): Promise<void>
   signUp(email: string, pw: string): Promise<void>
   resetPassword(email: string): Promise<void>
@@ -43,10 +51,13 @@ interface SyncStoreState {
 let backend: Promise<SyncBackend> | undefined
 let engine: SyncEngine | undefined
 let listening = false
+let currentRemote: Remote | undefined
 const getBackend = () => (backend ??= (override ?? realBackend)())
 
 export const syncStore = createStore<SyncStoreState>()(() => ({
-  user: null, status: { state: 'off', pending: 0 }, known: false,
+  user: null, status: { state: 'off', pending: 0 }, known: false, askMerge: false,
+  confirmMerge() { const u = syncStore.getState().user; if (!u || !currentRemote) return; lsSet(LAST_UID, u.uid); syncStore.setState({ askMerge: false }); startFor(u, currentRemote) },
+  async cancelMerge() { syncStore.setState({ askMerge: false }); await (await getBackend()).auth.signOut() },
   async signIn(email, pw) { await listen(); await (await getBackend()).auth.signIn(email, pw) },
   async signUp(email, pw) { await listen(); await (await getBackend()).auth.signUp(email, pw) },
   async resetPassword(email) { await (await getBackend()).auth.resetPassword(email) },
@@ -88,12 +99,21 @@ function startFor(user: SyncUser, remote: Remote) {
 async function listen() {
   if (listening) return
   listening = true
-  const b = await getBackend()
+  let b: SyncBackend
+  try { b = await getBackend() } catch {
+    // Couldn't load sync (e.g. offline on first use): let the next tap try again.
+    listening = false; backend = undefined; syncStore.setState({ known: true })
+    throw new Error('Couldn’t reach the sync service. Check your connection and try again.')
+  }
+  currentRemote = b.remote
   b.auth.onUser((user) => {
-    syncStore.setState({ user, known: true })
-    try { if (user) localStorage.setItem(ON_KEY, '1'); else localStorage.removeItem(ON_KEY) } catch { /* ignore */ }
-    if (user) startFor(user, b.remote)
-    else { engine?.stop(); engine = undefined; syncStore.setState({ status: { state: 'off', pending: 0 } }) }
+    lsSet(ON_KEY, user ? '1' : null)
+    if (!user) { engine?.stop(); engine = undefined; syncStore.setState({ user, known: true, askMerge: false, status: { state: 'off', pending: 0 } }); return }
+    const last = lsGet(LAST_UID)
+    if (last && last !== user.uid) { engine?.stop(); engine = undefined; syncStore.setState({ user, known: true, askMerge: true, status: { state: 'off', pending: 0 } }); return }
+    lsSet(LAST_UID, user.uid)
+    syncStore.setState({ user, known: true, askMerge: false })
+    startFor(user, b.remote)
   })
 }
 

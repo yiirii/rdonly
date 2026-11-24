@@ -78,3 +78,19 @@ describe('reorder during a drag', () => {
     expect(new Set(s.getState().collections.map((x) => x.order)).size).toBe(3)
   })
 })
+
+describe('library load', () => {
+  it('works out which books are missing their file with one listing, not one lookup per book', async () => {
+    const { createLibraryStore } = await import('../../src/state/library')
+    const { memRecords, memFiles } = await import('./fakes')
+    const records = memRecords(), files = memFiles()
+    for (let i = 0; i < 30; i++) await records.put('books', { id: `b${i}`, updatedAt: 1, title: `B${i}`, format: 'epub', tag: 'novel', fileName: 'x', fileSize: 1, addedAt: i })
+    await files.put('b3', 'epub', new Uint8Array([1]))
+    const s = createLibraryStore({ records, files })
+    files.hasCalls = 0
+    await s.getState().load()
+    expect(files.hasCalls).toBe(0)
+    expect(s.getState().missing.size).toBe(29)
+    expect(s.getState().missing.has('b3')).toBe(false)
+  })
+})

@@ -24,7 +24,7 @@ export function statusLine(s: SyncStatus): { text: string; tone: 'ok' | 'busy' |
 
 /** Settings → Account & Sync. Signed out: a small form. Signed in: who, how sync is doing, Sync now, Sign out. */
 export function AccountSync() {
-  const { user, status, known, signIn, signUp, resetPassword, signOut, syncNow } = useSync((s) => s)
+  const { user, status, known, askMerge, confirmMerge, cancelMerge, signIn, signUp, resetPassword, signOut, syncNow } = useSync((s) => s)
   const [email, setEmail] = useState(''), [pw, setPw] = useState('')
   const [err, setErr] = useState<string | null>(null), [note, setNote] = useState<string | null>(null), [busy, setBusy] = useState(false)
   const [, tick] = useState(0)
@@ -36,7 +36,17 @@ export function AccountSync() {
   const line = statusLine(status)
   return (
     <div className="group card account" role="group" aria-label="Account & Sync">
-      {!known ? <div className="row dim">Checking…</div> : user ? (
+      {!known ? <div className="row dim">Checking…</div> : user && askMerge ? (
+        <motion.div role="alertdialog" aria-label="Library from another account" aria-describedby="merge-q" className="acct-form merge"
+          initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
+          <p id="merge-q" className="acct-q">This device’s library came from another account. Add it to <b>{user.email}</b>? Your books, places and collections will be copied there.</p>
+          <div className="acct-actions">
+            <button type="button" className="keycap primary" onClick={confirmMerge}>Add my library</button>
+            <button type="button" className="keycap" onClick={() => void act(cancelMerge)}>Cancel</button>
+          </div>
+          <p className="acct-note top">Cancel signs you out and copies nothing.</p>
+        </motion.div>
+      ) : user ? (
         <>
           <div className="row"><span>Signed in as</span><span className="dim acct-email">{user.email}</span></div>
           <div className="row persist" data-testid="sync-status">

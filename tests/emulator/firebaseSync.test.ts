@@ -51,7 +51,7 @@ describe('Firebase sync (emulator)', () => {
 
   it('never overwrites a newer cloud record', async () => {
     await B.store.put<Rec>('books', { id: 'z', updatedAt: 900, title: 'newer' }); await B.engine.syncNow()
-    expect(await A.remote.pushIfNewer(A.user.uid, 'books', { id: 'z', updatedAt: 100, title: 'stale' } as Rec)).toBe(false)
+    expect(await A.remote.pushIfNewer(A.user.uid, 'books', { id: 'z', updatedAt: 100, title: 'stale' } as Rec)).toMatchObject({ written: false, current: { title: 'newer' } })
     await until(async () => (await A.local.get<Rec>('books', 'z'))?.title === 'newer')
   })
 

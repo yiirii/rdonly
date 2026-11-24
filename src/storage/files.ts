@@ -22,6 +22,7 @@ export function createIdbFileStore(name = 'rdonly-files'): FileStore {
       return b ? new Blob([b as unknown as BlobPart]) : undefined
     },
     async has(id) { return (await (await open()).getKey('files', id)) !== undefined },
+    async ids() { return (await (await open()).getAllKeys('files')).map(String) },
     async remove(id) {
       const tx = (await open()).transaction(['files', 'sizes'], 'readwrite')
       await Promise.all([tx.objectStore('files').delete(id), tx.objectStore('sizes').delete(id), tx.done])
@@ -68,6 +69,11 @@ export function createOpfsFileStore(): FileStore {
     },
     async getBlob(id) { const f = await find(id); return f ? f.h.getFile() : undefined },
     async has(id) { return (await find(id)) !== undefined },
+    async ids() {
+      const out: string[] = []
+      for await (const name of (await dir() as unknown as { keys(): AsyncIterable<string> }).keys()) { const m = /^([0-9a-f]+)\.[a-z0-9]+$/.exec(name); if (m) out.push(m[1]) }
+      return out
+    },
     async remove(id) { const f = await find(id); if (f) await (await dir()).removeEntry(f.name) },
     async usage() {
       let used = 0

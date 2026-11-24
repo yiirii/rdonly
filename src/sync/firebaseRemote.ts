@@ -23,9 +23,9 @@ export async function firebaseRemote(db: Firestore): Promise<Remote> {
       const ref = f.doc(db, 'users', uid, col, rec.id)
       return f.runTransaction(db, async (tx) => {
         const snap = await tx.get(ref)
-        if (snap.exists() && !wins(rec, strip(snap.data()))) return false
+        if (snap.exists()) { const current = strip(snap.data()); if (!wins(rec, current)) return { written: false, current } }
         tx.set(ref, { ...rec, _at: f.serverTimestamp() })
-        return true
+        return { written: true }
       })
     },
     async pullSince(uid, col, cursor) {

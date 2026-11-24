@@ -1,6 +1,6 @@
 import type { BaseRecord } from '../storage/types'
 import { authMessage, type SyncUser } from './auth'
-import type { Remote } from './remote'
+import type { PushResult, Remote } from './remote'
 import type { SyncBackend } from '../state/sync'
 
 // #debug only: a backend that talks to a stand-in cloud the e2e test runner exposes as window functions.
@@ -24,7 +24,7 @@ export function fakeBackend(): SyncBackend {
     return r.ok as T
   }
   const remote: Remote = {
-    pushIfNewer: (uid, col, rec) => call<boolean>('push', uid, col, rec),
+    pushIfNewer: (uid, col, rec) => call<PushResult>('push', uid, col, rec),
     pullSince: (uid, col, cursor) => call<{ recs: BaseRecord[]; cursor: number }>('pull', uid, col, cursor),
     watch(uid, col, cursor, on, onError) { // the stand-in cloud can't call into the page, so it's polled
       let c = cursor, stop = false

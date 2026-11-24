@@ -15,11 +15,11 @@ export function memoryRemote() {
     async pushIfNewer(uid, col, rec) {
       fail()
       const cur = docs.get(key(uid, col, rec.id))
-      if (cur && !wins(rec, cur.rec)) return false
+      if (cur && !wins(rec, cur.rec)) return { written: false, current: structuredClone(cur.rec) }
       const at = ++clock
       docs.set(key(uid, col, rec.id), { rec: structuredClone(rec), at }); r.writes++; uids.add(uid)
       for (const w of watchers) if (w.uid === uid && w.col === col) queueMicrotask(() => w.on([structuredClone(rec)], at))
-      return true
+      return { written: true }
     },
     async pullSince(uid, col, cursor) {
       fail()

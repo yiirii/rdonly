@@ -3,10 +3,11 @@ import type { BaseRecord } from '../storage/types'
 /** Opaque, server-ordered position in a collection's change stream (server time, never device time). */
 export type Cursor = number
 export type Unsubscribe = () => void
+export interface PushResult { written: boolean; current?: BaseRecord }
 
 export interface Remote {
-  /** Write `rec` unless the cloud already has a record that wins over it. Returns whether it was written. */
-  pushIfNewer(uid: string, col: string, rec: BaseRecord): Promise<boolean>
+  /** Write `rec` unless the cloud already has a record that wins over it; then that record comes back as `current`. */
+  pushIfNewer(uid: string, col: string, rec: BaseRecord): Promise<PushResult>
   /** Everything changed after `cursor`, and the new cursor. */
   pullSince(uid: string, col: string, cursor: Cursor): Promise<{ recs: BaseRecord[]; cursor: Cursor }>
   /** Live changes after `cursor`. */

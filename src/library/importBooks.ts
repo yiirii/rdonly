@@ -67,7 +67,8 @@ async function importOne(name: string, bytes: Uint8Array, deps: ImportDeps): Pro
   }
   const t = now()
   const rec: BookRecord = {
-    id, updatedAt: t, title: meta.title ?? titleFromFileName(name), format, tag,
+    // Newer than a delete that may have come from a device whose clock runs ahead.
+    id, updatedAt: existing ? Math.max(t, existing.updatedAt + 1) : t, title: meta.title ?? titleFromFileName(name), format, tag,
     fileName: name, fileSize: bytes.length, addedAt: t,
     ...(meta.author && { author: meta.author }), ...(meta.series && { series: meta.series }),
     ...(meta.volume !== undefined && { volume: meta.volume }), ...(coverThumb && { coverThumb }),

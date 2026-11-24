@@ -80,6 +80,9 @@ export function createDiskStorage(root: string): { records: RecordStore; files: 
     },
     async get(id) { const n = await findBook(id); return n ? new Uint8Array(await fs.readFile(join(bookDir, n))) : undefined },
     async has(id) { return (await findBook(id)) !== undefined },
+    async ids() {
+      try { return (await fs.readdir(bookDir)).map((n) => /^([0-9a-f]+)\.[a-z0-9]+$/.exec(n)?.[1]).filter((x): x is string => !!x) } catch { return [] }
+    },
     async remove(id) { const n = await findBook(id); if (n) await fs.rm(join(bookDir, n)) },
     async usage() {
       let used = 0

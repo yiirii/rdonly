@@ -67,8 +67,9 @@ export function createLibraryStore(deps: ImportDeps) {
       const [all, progress, collections, items] = await Promise.all([
         r.list<BookRecord>('books'), r.list<ProgressRecord>('progress'), liveCollections(r), r.list<CollectionItemRecord>('collectionItems'),
       ])
-      const has = await Promise.all(all.map((b) => deps.files.has(b.id).catch(() => true)))
-      const missing = new Set(all.filter((_, i) => !has[i]).map((b) => b.id))
+      // One listing of the files on this device (not one lookup per book).
+      const onDevice = new Set(await deps.files.ids().catch(() => all.map((b) => b.id)))
+      const missing = new Set(all.filter((b) => !onDevice.has(b.id)).map((b) => b.id))
       if (my !== loadSeq) return
       const tab = get().tab
       const tabOk = ['all', 'reading', 'new', 'finished'].includes(tab) || collections.some((c) => c.id === tab)

@@ -62,11 +62,16 @@ export function createSyncEngine(o: { local: RecordStore; remote: Remote; uid: s
       for (const e of await pendingOutbox(local)) {
         if (!alive) return
         const rec = await local.get(e.col, e.recId)
-        if (rec && alive) await remote.pushIfNewer(uid, e.col, rec)
+        if (rec && alive) {
+          const r = await remote.pushIfNewer(uid, e.col, rec)
+          // The cloud had something newer (maybe from a device with a faster clock): take it.
+          if (!r.written && r.current && alive && (await applyRemote(local, e.col, r.current))) changed(new Set([e.col]))
+        }
         if (!alive) return
         await settleOutbox(local, e)
       }
       cursors.set(uid, 'seeded', 1)
+      if (alive && !unsubs.length) listen() // first run, or reconnecting after a listener failed
       setStatus({ state: 'idle', pending: (await pendingOutbox(local)).length, lastSyncAt: Date.now(), error: undefined })
     } catch (e) {
       if (!alive) return
@@ -77,19 +82,28 @@ export function createSyncEngine(o: { local: RecordStore; remote: Remote; uid: s
     }
   }
 
+  /** Live listeners. One that fails (not just offline) is dead for good, so all are dropped and re-made after the next good sync. */
+  function listen() {
+    for (const col of cols) {
+      unsubs.push(remote.watch(uid, col, cursorOf(col), (recs, c) => {
+        if (!alive) return
+        void apply(col, recs).then((any) => { if (!alive) return; advance(col, c); if (any) changed(new Set([col])) })
+      }, (e) => {
+        if (!alive) return
+        if (isOffline(e)) { setStatus({ state: 'offline' }); return } // listeners wait out a lost connection by themselves
+        for (const u of unsubs.splice(0)) u()
+        setStatus({ state: 'error', error: plain(e) })
+        clearTimeout(retryTimer); retryTimer = setTimeout(() => { if (alive) void engine.syncNow() }, o.retryMs ?? 15_000)
+      }))
+    }
+  }
+
   const engine: SyncEngine = {
     async start() {
       if (alive) return
       alive = true
       setStatus({ state: 'syncing', pending: (await pendingOutbox(local)).length })
       await engine.syncNow()
-      if (!alive) return
-      for (const col of cols) {
-        unsubs.push(remote.watch(uid, col, cursorOf(col), (recs, c) => {
-          if (!alive) return
-          void apply(col, recs).then((any) => { if (!alive) return; advance(col, c); if (any) changed(new Set([col])) })
-        }, (e) => { if (alive && isOffline(e)) setStatus({ state: 'offline' }) }))
-      }
     },
     stop() {
       alive = false

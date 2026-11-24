@@ -164,3 +164,32 @@ describe('sync engine (two devices, one cloud)', () => {
     expect(cloud.peek('u1', 'settings', 'theme')).toBeDefined()
   })
 })
+
+describe('sync engine: recovery', () => {
+  it('when the cloud refuses an upload because it has a newer record, that record comes down', async () => {
+    const cloud = memoryRemote()
+    const lagging = { ...cloud, pullSince: async (_u: string, _c: string, cursor: number) => ({ recs: [], cursor }) } // its pull hasn't caught up yet
+    const local = memRecords(); const store = syncedRecords(local)
+    const e = createSyncEngine({ local, remote: lagging, uid: 'u1', cursors: memoryCursors(), pushDelayMs: 0 })
+    cloud.seed('u1', 'progress', { id: 'p', updatedAt: 900, title: 'laptop place' } as Rec)
+    await store.put<Rec>('progress', { id: 'p', updatedAt: 100, title: 'stale' })
+    await e.start()
+    expect((await local.get<Rec>('progress', 'p'))?.title).toBe('laptop place')
+    e.stop()
+  })
+
+  it('live updates reconnect after the listener fails', async () => {
+    const cloud = memoryRemote()
+    let watches = 0, failFirst: ((e: unknown) => void) | undefined
+    const flaky = { ...cloud, watch(uid: string, col: string, c: number, on: never, onError?: (e: unknown) => void) { watches++; if (col === 'books' && !failFirst) failFirst = onError; return cloud.watch(uid, col, c, on) } }
+    const local = memRecords()
+    const e = createSyncEngine({ local, remote: flaky, uid: 'u1', cursors: memoryCursors(), pushDelayMs: 0, retryMs: 5 })
+    await e.start()
+    const first = watches
+    failFirst!(Object.assign(new Error('internal'), { code: 'internal' }))
+    await new Promise((r) => setTimeout(r, 40)); await e.syncNow(); await tick()
+    expect(watches).toBe(first * 2) // every collection listens again
+    e.stop()
+  })
+
+})

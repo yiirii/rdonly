@@ -449,3 +449,5 @@ button.link { appearance: none; border: 0; background: none; color: var(--accent
 button.book[data-missing] .book-cover > img, button.book[data-missing] .book-cover > .placeholder-cover, button.book[data-missing] .book-cover > svg { opacity: .42; }
 .cloud-mark { position: absolute; z-index: 2; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); color: var(--text); box-shadow: inset 0 1px 0 var(--edge); }
 .missing-note { display: block; color: var(--accent); font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
+.account .acct-q { margin: 0; font-size: 15px; line-height: 1.5; }
+.account .acct-q b { font-weight: 600; }

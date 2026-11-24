@@ -132,3 +132,28 @@ test('wrong password and taken email are explained; sign out keeps the library',
   await a.getByRole('button', { name: 'Done' }).click()
   await expect(a.getByTestId('book-card')).toHaveCount(1)
 })
+
+test('signing in with a different account asks before adding this device’s library to it', async ({ browser }) => {
+  const c = cloud()
+  const a = await deviceOn(browser, c)
+  await a.getByTestId('import-input').setInputFiles(['tests/fixtures/plain.cbz'])
+  await signIn(a, 'first@example.com', 'secret123', true)
+  await a.getByTestId('settings-button').click()
+  await a.getByRole('button', { name: 'Sign out' }).click()
+  const acct = a.getByRole('group', { name: 'Account & Sync' })
+  await acct.getByLabel('Email').fill('typo@example.com'); await acct.getByLabel('Password').fill('secret123')
+  await acct.getByRole('button', { name: 'Create account' }).click()
+  const ask = a.getByRole('alertdialog', { name: /another account/ })
+  await expect(ask).toContainText('typo@example.com')
+  await a.screenshot({ path: 'test-results/shots/sync-switch-laptop.png' })
+  await ask.getByRole('button', { name: 'Cancel' }).click()
+  await expect(acct.getByRole('button', { name: 'Sign in' })).toBeVisible()
+  await a.waitForTimeout(800)
+  expect(c.remote.uidsWritten()).toEqual(['uid-1']) // nothing went to the stray account
+  // Choosing to add it does upload.
+  await acct.getByLabel('Email').fill('typo@example.com'); await acct.getByLabel('Password').fill('secret123')
+  await acct.getByRole('button', { name: 'Sign in' }).click()
+  await a.getByRole('alertdialog', { name: /another account/ }).getByRole('button', { name: 'Add my library' }).click()
+  await expect(acct.getByTestId('sync-status')).toContainText(/Up to date/, { timeout: 10_000 })
+  expect(c.remote.uidsWritten()).toEqual(['uid-1', 'uid-2'])
+})
