@@ -11,13 +11,14 @@ export function memRecords(): RecordStore & { failPut?: boolean } {
   return s
 }
 
-export function memFiles(): FileStore & { failPut?: boolean } {
+export function memFiles(): FileStore & { failPut?: boolean; hasCalls?: number } {
   const m = new Map<string, Uint8Array>()
-  const s: FileStore & { failPut?: boolean } = {
+  const s: FileStore & { failPut?: boolean; hasCalls?: number } = {
     async put(id, _e, b) { if (s.failPut) throw new Error('QuotaExceededError'); m.set(id, b) },
     async get(id) { return m.get(id) },
     async getBlob(id) { const b = m.get(id); return b ? new Blob([b as unknown as BlobPart]) : undefined },
-    async has(id) { return m.has(id) },
+    async has(id) { s.hasCalls = (s.hasCalls ?? 0) + 1; return m.has(id) },
+    async ids() { return [...m.keys()] },
     async remove(id) { m.delete(id) },
     async usage() { return { usedBytes: [...m.values()].reduce((n, b) => n + b.length, 0) } },
   }

@@ -37,4 +37,11 @@ describe('progress saver', () => {
     s.update(p(1)); await s.flush(); await vi.advanceTimersByTimeAsync(60_000)
     expect(writes).toHaveLength(1)
   })
+  it('a save is always stamped newer than the place already stored (a device with a slow clock still wins)', async () => {
+    await records.put<ProgressRecord>('progress', { id: 'book1', updatedAt: 999_999, locator: 'from-laptop', percent: 0.5, mode: 'novel' })
+    const s = saver(); s.update({ locator: 'here', percent: 0.6, mode: 'novel' }); await s.flush()
+    const r = (await records.get<ProgressRecord>('progress', 'book1'))!
+    expect(r.locator).toBe('here')
+    expect(r.updatedAt).toBeGreaterThan(999_999)
+  })
 })

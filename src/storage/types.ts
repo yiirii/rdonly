@@ -14,6 +14,8 @@ export interface FileStore {
   /** For reading: a Blob lets readers slice what they need instead of loading the whole book. */
   getBlob(id: string): Promise<Blob | undefined>
   has(id: string): Promise<boolean>
+  /** Ids of every book file on this device, in one go. */
+  ids(): Promise<string[]>
   remove(id: string): Promise<void>
   usage(): Promise<{ usedBytes: number; quotaBytes?: number }>
 }

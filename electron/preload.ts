@@ -10,5 +10,5 @@ contextBridge.exposeInMainWorld('rdonly', {
       try { await save() } finally { ipcRenderer.send('rdonly:ready-to-close') }
     })
   },
-  files: { put: call('files', 'put'), get: call('files', 'get'), has: call('files', 'has'), remove: call('files', 'remove'), usage: call('files', 'usage') },
+  files: { put: call('files', 'put'), get: call('files', 'get'), has: call('files', 'has'), ids: call('files', 'ids'), remove: call('files', 'remove'), usage: call('files', 'usage') },
 })

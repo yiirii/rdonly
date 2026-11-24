@@ -100,4 +100,13 @@ describe('importFiles', () => {
     const [r] = await importFiles([f('novel.epub')], { ...deps(), records: recs })
     expect(r.status).toBe('error')
   })
+  it('re-adding a book deleted on another device is stamped newer than the delete, even with a slow clock', async () => {
+    const [a] = await importFiles([f('novel.epub')], deps())
+    await records.put<BookRecord>('books', { ...(await records.get<BookRecord>('books', a.bookId!))!, deleted: true, updatedAt: 90_000 }) // tombstone from a device with a faster clock
+    await files.remove(a.bookId!)
+    await importFiles([f('novel.epub')], { ...deps(), now: () => 5000 })
+    const b = (await records.get<BookRecord>('books', a.bookId!))!
+    expect(b.deleted).toBeUndefined()
+    expect(b.updatedAt).toBeGreaterThan(90_000)
+  })
 })

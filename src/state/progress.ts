@@ -22,7 +22,12 @@ export function createProgressSaver(records: RecordStore, bookId: string, opts: 
     written = key
     lastWrite = now()
     const rec: ProgressRecord = { id: bookId, updatedAt: lastWrite, ...latest }
-    chain = chain.then(() => records.put('progress', rec)).catch(() => { written = undefined })
+    chain = chain.then(async () => {
+      // Always newer than the stored place (it may have come from a device whose clock runs ahead).
+      const cur = await records.get<ProgressRecord>('progress', bookId)
+      if (cur && cur.updatedAt >= rec.updatedAt) rec.updatedAt = cur.updatedAt + 1
+      await records.put('progress', rec)
+    }).catch(() => { written = undefined })
     return chain
   }
   return {

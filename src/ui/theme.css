@@ -430,3 +430,24 @@ button.book[data-selected] .book-cover { outline: 3px solid var(--accent); outli
 .tab-burst i { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 2px; }
 @media (prefers-reduced-motion: reduce) { .chip-dot { transition: none; } }
 .size input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+
+/* ---------- Account & Sync ---------- */
+.account .acct-form { display: grid; gap: 12px; padding: 14px 16px 16px; }
+.account .acct-note { margin: 0; padding: 0 16px 14px; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+.account .acct-note.top { padding: 0; }
+.account .acct-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.account .row.acct-actions { padding-top: 6px; }
+.account .acct-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.account .acct-err { margin: 0; font-size: 14px; color: #f0a0a0; }
+.account .acct-ok { margin: 0; font-size: 14px; color: #98c379; }
+.keycap.primary { background: var(--accent); color: #0f1420; }
+.keycap.ghost { background: transparent; box-shadow: inset 0 0 0 1.5px var(--surface-2); }
+button.link { appearance: none; border: 0; background: none; color: var(--accent); font: 14px var(--font-ui); cursor: pointer; padding: 8px 4px; margin-left: auto; }
+.bead.busy { background: var(--accent); }
+
+/* Books whose file is on your other device */
+button.book[data-missing] .book-cover > img, button.book[data-missing] .book-cover > .placeholder-cover, button.book[data-missing] .book-cover > svg { opacity: .42; }
+.cloud-mark { position: absolute; z-index: 2; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); color: var(--text); box-shadow: inset 0 1px 0 var(--edge); }
+.missing-note { display: block; color: var(--accent); font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
+.account .acct-q { margin: 0; font-size: 15px; line-height: 1.5; }
+.account .acct-q b { font-weight: 600; }

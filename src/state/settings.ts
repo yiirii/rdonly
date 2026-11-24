@@ -65,7 +65,10 @@ export const settingsStore = createStore<SettingsState>()((set) => ({
   set(k, v) {
     set({ [k]: v } as Partial<SettingsState>)
     if (isLocal(k)) { try { localStorage.setItem(LOCAL_PREFIX + k, JSON.stringify(v)) } catch { /* ignore */ } }
-    else void getRecordStore().put<SettingRecord>('settings', { id: k, value: v, updatedAt: Date.now() })
+    else void (async () => {
+      const r = getRecordStore(); const cur = await r.get<SettingRecord>('settings', k)
+      await r.put<SettingRecord>('settings', { id: k, value: v, updatedAt: Math.max(Date.now(), (cur?.updatedAt ?? 0) + 1) })
+    })()
   },
 }))
 export const useSettings = <T,>(sel: (s: SettingsState) => T) => useStore(settingsStore, sel)
