@@ -8,11 +8,11 @@ const Cover = ({ book }: { book: BookRecord }) =>
   book.coverThumb ? <img src={book.coverThumb} alt="" draggable={false} /> : <PlaceholderCover title={book.title} tag={book.tag} />
 
 /** A series folder: the first volume's cover with the next ones stacked behind it, and a folder tab with the count. */
-export function SeriesCard({ name, seriesKey, books, index }: { name: string; seriesKey: string; books: BookRecord[]; index: number }) {
+export function SeriesCard({ name, seriesKey, books, index, cols }: { name: string; seriesKey: string; books: BookRecord[]; index: number; cols?: number }) {
   const reduce = useReducedMotion()
   const behind = books.slice(1, 3).reverse()
   return (
-    <motion.button type="button" layout={!reduce} className="book series" data-testid="series-card" aria-label={`Open series ${name}, ${books.length} books`}
+    <motion.button type="button" layout={!reduce} layoutDependency={`${cols}:${index}`} className="book series" data-testid="series-card" aria-label={`Open series ${name}, ${books.length} books`}
       initial={reduce ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
       transition={{ ...settle, delay: Math.min(index, 12) * 0.035 }}

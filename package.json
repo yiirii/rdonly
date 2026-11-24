@@ -1,7 +1,7 @@
 {
   "name": "rdonly",
   "productName": "Rd Only",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.cjs",

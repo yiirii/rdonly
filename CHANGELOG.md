@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1 — 2026-11-24
+- **Series folders look right again:** the covers fanned out behind the front one were being cut off.
+- **Smoother cover-size slider:** covers now grow and shrink with every tiny movement, and spare room is shared evenly so the grid stays balanced. Covers glide to their new spot when a column comes or goes. The size is saved even if you close the app straight away.
+- **Calmer Settings button:** just the gear turns a little and settles, no wobble.
+- Big libraries switch tabs and filters a little more smoothly.
+
 ## 0.4.0 — 2026-11-23
 A library you can organise.
 - **Continue reading:** a big card for the book you were last in, tinted to match its cover. Resume drops you straight back in.
