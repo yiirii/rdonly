@@ -6,6 +6,7 @@ Your library on both devices.
 - **Works offline:** changes wait on the device and go up when you're back online. Settings shows "Up to date", "Syncing…" or "Offline · 2 changes waiting".
 - **Books from your other device** show with a cloud mark and "Not on this device". Tap one and choose the same file to read it here, with your place already saved.
 - Delete a book on one device and it goes from the other too.
+- Signing in with a different account asks before copying this device's library into it.
 - Signing out keeps everything on the device. Problems are explained in plain words (wrong password, account already exists, no connection).
 
 ## 0.4.2 — 2026-11-24
