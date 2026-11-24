@@ -4,6 +4,7 @@ import { getFileStore } from '../storage/files'
 import { persistStatus, type PersistState } from '../storage/persist'
 import { bridge } from '../storage/types'
 import { sheet } from './motion'
+import { AccountSync } from './AccountSync'
 
 const mb = (b: number) => (b < 1e6 ? `${Math.max(0.1, b / 1e6).toFixed(1)} MB` : b < 1e9 ? `${(b / 1e6).toFixed(0)} MB` : `${(b / 1e9).toFixed(2)} GB`)
 
@@ -42,6 +43,8 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
               <h2 id="settings-title">Settings</h2>
               <button className="keycap" onClick={onClose}>Done</button>
             </header>
+            <h3 className="group-title">Account &amp; Sync</h3>
+            <AccountSync />
             <h3 className="group-title">Storage</h3>
             <div className="group card">
               <div className="row"><span>Books on this device</span><span className="dim">{usage === null ? '…' : mb(usage)}</span></div>

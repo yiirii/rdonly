@@ -5,7 +5,8 @@ const seen = new WeakMap<Element, boolean>()
 let io: IntersectionObserver | undefined
 const observer = () => (io ??= new IntersectionObserver((es) => { for (const e of es) seen.set(e.target, e.isIntersecting) }, { rootMargin: '80px' }))
 
-const inView = (el: Element) => { const r = el.getBoundingClientRect(); return r.bottom > -80 && r.top < innerHeight + 80 }
+/** Any part of it on screen right now. */
+const inView = (el: Element) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight }
 
 /**
  * `quiet.current` is true for a card that mounted off screen — it should skip its entrance (nobody sees it).

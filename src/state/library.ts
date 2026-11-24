@@ -14,6 +14,8 @@ export type { SortKey }
 
 interface LibraryState {
   loaded: boolean
+  /** Books whose file isn't on this device (e.g. added on your other device). */
+  missing: Set<string>
   all: BookRecord[]
   books: BookRecord[]
   progress: ProgressRecord[]
@@ -58,17 +60,19 @@ export function createLibraryStore(deps: ImportDeps) {
   let loadSeq = 0 // only the newest load may write its results
   let reorderQueue: Promise<unknown> = Promise.resolve()
   const store = createStore<LibraryState>()((set, get) => ({
-    loaded: false, all: [], books: [], progress: [], collections: [], items: [], sort: 'added', tab: 'all', types: [], search: '', busy: false, justCreated: null,
+    loaded: false, missing: new Set(), all: [], books: [], progress: [], collections: [], items: [], sort: 'added', tab: 'all', types: [], search: '', busy: false, justCreated: null,
     async load() {
       const my = ++loadSeq
       const r = deps.records
       const [all, progress, collections, items] = await Promise.all([
         r.list<BookRecord>('books'), r.list<ProgressRecord>('progress'), liveCollections(r), r.list<CollectionItemRecord>('collectionItems'),
       ])
+      const has = await Promise.all(all.map((b) => deps.files.has(b.id).catch(() => true)))
+      const missing = new Set(all.filter((_, i) => !has[i]).map((b) => b.id))
       if (my !== loadSeq) return
       const tab = get().tab
       const tabOk = ['all', 'reading', 'new', 'finished'].includes(tab) || collections.some((c) => c.id === tab)
-      set({ all, books: sorted(all, get().sort), progress, collections, items, loaded: true, ...(tabOk ? {} : { tab: 'all' }) })
+      set({ all, missing, books: sorted(all, get().sort), progress, collections, items, loaded: true, ...(tabOk ? {} : { tab: 'all' }) })
     },
     setTab(tab) { set({ tab }) },
     toggleType(t) { const ts = get().types; set({ types: ts.includes(t) ? ts.filter((x) => x !== t) : [...ts, t] }) },

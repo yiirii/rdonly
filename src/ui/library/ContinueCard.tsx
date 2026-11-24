@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { BookRecord } from '../../library/types'
 import type { ProgressRecord } from '../../state/progress'
 import { openBook } from '../../state/route'
+import { requestRelink } from '../relink'
 import { setOpenOrigin } from '../../reader/openOrigin'
 import { PlaceholderCover } from '../PlaceholderCover'
 import { coverTint } from './coverTint'
@@ -18,12 +19,13 @@ const ago = (t: number) => {
 }
 
 /** The last book you read, big, tinted with its own cover colour, with a few flat shapes tumbling behind it. */
-export function ContinueCard({ book, progress }: { book: BookRecord; progress?: ProgressRecord }) {
+export function ContinueCard({ book, progress, missing }: { book: BookRecord; progress?: ProgressRecord; missing?: boolean }) {
   const reduce = useReducedMotion()
   const [tint, setTint] = useState({ bg: '#22324a', deep: '#1a2638', accent: '#9fb4e6', shape: '#2b3d59' })
   useEffect(() => { void coverTint(book.coverThumb).then(setTint) }, [book.coverThumb])
   const pct = Math.round((progress?.percent ?? 0) * 100)
   const resume = (e: React.MouseEvent) => {
+    if (missing) { requestRelink(book); return }
     const el = (e.currentTarget as HTMLElement).closest('[data-testid="continue-card"]')?.querySelector('.cc-cover')
     if (el) setOpenOrigin(el.getBoundingClientRect())
     openBook(book.id)

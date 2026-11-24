@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-11-24
+Your library on both devices.
+- **Sign in to sync** (Settings → Account & Sync, email and password). Your library, reading places, collections, tags and reading look follow you between the laptop and the iPhone. Text size and page-turn style stay per device.
+- **Works offline:** changes wait on the device and go up when you're back online. Settings shows "Up to date", "Syncing…" or "Offline · 2 changes waiting".
+- **Books from your other device** show with a cloud mark and "Not on this device". Tap one and choose the same file to read it here, with your place already saved.
+- Delete a book on one device and it goes from the other too.
+- Signing out keeps everything on the device. Problems are explained in plain words (wrong password, account already exists, no connection).
+
 ## 0.4.2 — 2026-11-24
 - Big libraries: covers you can't see at that moment now appear and leave instantly, so switching tabs and filters is lighter. Everything on screen keeps its full animation.
 

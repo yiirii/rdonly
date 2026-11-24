@@ -11,9 +11,10 @@ import { settingsStore, useSettings } from '../state/settings'
 import { BookActions } from './BookActions'
 import { BookCard } from './BookCard'
 import { DropZone } from './DropZone'
-import { ImportButton } from './ImportButton'
+import { ACCEPT, ImportButton } from './ImportButton'
 import { CollectionSheet } from './library/CollectionSheet'
 import { ContinueCard } from './library/ContinueCard'
+import { onRelinkRequest } from './relink'
 import { LibraryTabs } from './library/LibraryTabs'
 import { SelectionBar } from './library/SelectionBar'
 import { SortMenu } from './library/SortMenu'
@@ -31,7 +32,7 @@ const EMPTY_COPY: Record<string, string> = {
 
 export function LibraryScreen() {
   const s = useLibrary(useShallow((x) => ({
-    all: x.all, progress: x.progress, collections: x.collections, items: x.items, loaded: x.loaded, busy: x.busy,
+    all: x.all, progress: x.progress, collections: x.collections, items: x.items, loaded: x.loaded, busy: x.busy, missing: x.missing,
     sort: x.sort, tab: x.tab, types: x.types, search: x.search,
   })))
   const lib = libraryStore().getState()
@@ -131,11 +132,21 @@ export function LibraryScreen() {
   const selectedRef = useRef(selected); selectedRef.current = selected
   const dragIds = useCallback((bk: BookRecord) => (selectedRef.current.includes(bk.id) ? selectedRef.current : [bk.id]), [])
   const selectedSet = useMemo(() => new Set(selected), [selected])
+  // Books from your other device: tapping one asks for its file; the same file restores it.
+  const relinkInput = useRef<HTMLInputElement>(null)
+  const relinkFor = useRef<BookRecord | null>(null)
+  useEffect(() => onRelinkRequest((b) => { relinkFor.current = b; setToast({ msg: `Choose the file for “${b.title}” to read it on this device.`, tone: 'ok' }); relinkInput.current?.click() }), [])
+  const onRelinkFiles = async (files: File[]) => {
+    const want = relinkFor.current; if (!want || !files.length) return
+    const res = await lib.import(files)
+    if (res.some((r) => r.bookId === want.id)) setToast({ msg: `“${want.title}” is ready to read here.`, tone: 'ok' })
+    else setToast({ msg: `That file isn’t “${want.title}” (it may be a different edition), so it was added as its own book.`, tone: 'warn' })
+  }
   const onActions = useCallback((bk: BookRecord) => { setToast(null); setActionsFor(bk) }, [])
   const endSelection = () => { setSelecting(false); setSelected([]); anchor.current = null }
 
   const card = (b: BookRecord, i: number) => (
-    <BookCard key={b.id} book={b} index={i} progress={progressOf.get(b.id)} finished={view.status.get(b.id) === 'finished'}
+    <BookCard key={b.id} book={b} index={i} progress={progressOf.get(b.id)} finished={view.status.get(b.id) === 'finished'} missing={s.missing.has(b.id)}
       selecting={selecting} selected={selectedSet.has(b.id)} onSelect={onSelect} dragIds={dragIds} onActions={onActions} cols={cols} />
   )
   const liveCount = s.all.filter((b) => !b.deleted).length
@@ -144,6 +155,8 @@ export function LibraryScreen() {
 
   return (
     <div className="library" style={{ ['--cover' as string]: coverSize }}>
+      <input ref={relinkInput} type="file" hidden data-testid="relink-input" accept={ACCEPT}
+        onChange={(e) => { const f = [...(e.target.files ?? [])]; e.target.value = ''; void onRelinkFiles(f) }} />
       <header className="topbar">
         <h1>Library{hasBooks && <small className="count">{view.counts.all} {view.counts.all === 1 ? 'book' : 'books'}</small>}</h1>
         <motion.button className="keycap settings-btn" data-testid="settings-button" aria-label="Settings" onClick={() => setSettings(true)}
@@ -170,7 +183,7 @@ export function LibraryScreen() {
 
       {hasBooks && !folder && (
         <div className={`lib-top ${view.lastRead ? 'has-continue' : ''}`}>
-          {view.lastRead && <ContinueCard book={view.lastRead} progress={view.lastReadProgress} />}
+          {view.lastRead && <ContinueCard book={view.lastRead} progress={view.lastReadProgress} missing={s.missing.has(view.lastRead.id)} />}
           <div className="lib-controls">
             <div className="lib-sticky">
               <label className="search">
