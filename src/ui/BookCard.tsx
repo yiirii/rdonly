@@ -7,12 +7,12 @@ import { PlaceholderCover } from './PlaceholderCover'
 import { settle, TAG_COLOURS, TAG_LABELS } from './motion'
 
 export interface SelectProps { selecting?: boolean; selected?: boolean; onSelect?(b: BookRecord, e: { shift: boolean; meta: boolean }): void; dragIds?(b: BookRecord): string[] }
-type CardProps = { book: BookRecord; index: number; onActions(b: BookRecord): void; progress?: number; finished?: boolean } & SelectProps
+type CardProps = { book: BookRecord; index: number; onActions(b: BookRecord): void; progress?: number; finished?: boolean; /** shelf column count: a change re-renders so the card glides to its new spot */ cols?: number } & SelectProps
 
 /** Memoised: with 100+ books, typing in search or ticking one card must not re-render every other card. */
 export const BookCard = memo(BookCardImpl)
 
-function BookCardImpl({ book, index, onActions, progress, finished, selecting, selected, onSelect, dragIds }: CardProps) {
+function BookCardImpl({ book, index, onActions, progress, finished, cols, selecting, selected, onSelect, dragIds }: CardProps) {
   const select = onSelect ? { selecting: !!selecting, selected: !!selected, onSelect, dragIds: dragIds ?? ((b: BookRecord) => [b.id]) } : undefined
   const reduce = useReducedMotion()
   // Long-press (phone) or right-click (laptop) opens the book's actions instead of the book.
@@ -21,7 +21,7 @@ function BookCardImpl({ book, index, onActions, progress, finished, selecting, s
   return (
     <motion.button
       type="button"
-      layout={!reduce}
+      layout={!reduce} layoutDependency={`${cols}:${index}`}
       className="book"
       data-testid="book-card"
       aria-label={`Open ${book.title}`}

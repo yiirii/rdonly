@@ -35,7 +35,23 @@ export function LibraryScreen() {
     sort: x.sort, tab: x.tab, types: x.types, search: x.search,
   })))
   const lib = libraryStore().getState()
-  const coverSize = useSettings((x) => x.coverSize)
+  const savedCover = useSettings((x) => x.coverSize)
+  // The slider moves a local value every frame; the setting is saved once you stop dragging.
+  const [coverSize, setCoverSize] = useState(savedCover)
+  useEffect(() => setCoverSize(savedCover), [savedCover])
+  const saveCover = useRef<ReturnType<typeof setTimeout>>()
+  const pendingCover = useRef<number | null>(null)
+  const flushCover = useCallback(() => { clearTimeout(saveCover.current); if (pendingCover.current !== null) settingsStore.getState().set('coverSize', pendingCover.current); pendingCover.current = null }, [])
+  const onCover = (v: number) => { setCoverSize(v); pendingCover.current = v; clearTimeout(saveCover.current); saveCover.current = setTimeout(flushCover, 250) }
+  useEffect(() => { addEventListener('pagehide', flushCover); return () => { removeEventListener('pagehide', flushCover); flushCover() } }, [flushCover])
+  // Column count: covers re-render (and glide to their new place) only when it changes.
+  const shelfRef = useRef<HTMLElement>(null)
+  const [cols, setCols] = useState(0)
+  useEffect(() => {
+    const el = shelfRef.current; if (!el) return
+    const measure = () => setCols(getComputedStyle(el).gridTemplateColumns.split(' ').length)
+    measure(); const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect()
+  })
   const reduce = useReducedMotion()
   const [toast, setToast] = useState<{ msg: string; tone: 'ok' | 'warn' } | null>(null)
   const [settings, setSettings] = useState(false)
@@ -120,7 +136,7 @@ export function LibraryScreen() {
 
   const card = (b: BookRecord, i: number) => (
     <BookCard key={b.id} book={b} index={i} progress={progressOf.get(b.id)} finished={view.status.get(b.id) === 'finished'}
-      selecting={selecting} selected={selectedSet.has(b.id)} onSelect={onSelect} dragIds={dragIds} onActions={onActions} />
+      selecting={selecting} selected={selectedSet.has(b.id)} onSelect={onSelect} dragIds={dragIds} onActions={onActions} cols={cols} />
   )
   const liveCount = s.all.filter((b) => !b.deleted).length
   const isEmptyLibrary = s.loaded && liveCount === 0
@@ -131,12 +147,13 @@ export function LibraryScreen() {
       <header className="topbar">
         <h1>Library{hasBooks && <small className="count">{view.counts.all} {view.counts.all === 1 ? 'book' : 'books'}</small>}</h1>
         <motion.button className="keycap settings-btn" data-testid="settings-button" aria-label="Settings" onClick={() => setSettings(true)}
-          whileTap={reduce ? undefined : { rotate: 90, scale: 0.94 }} transition={{ type: 'spring', stiffness: 500, damping: 12 }}>
-          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+          whileHover="turn" whileTap="press">
+          {/* Only the gear turns, a little, and settles without wobble */}
+          <motion.svg variants={reduce ? {} : { turn: { rotate: 30 }, press: { rotate: 45 } }} transition={{ type: 'spring', stiffness: 260, damping: 26 }} viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
             <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2.2" />
             {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <rect key={a} x="10.6" y="1.8" width="2.8" height="4.6" rx="1.1" fill="currentColor" transform={`rotate(${a} 12 12)`} />)}
             <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="2.2" />
-          </svg>
+          </motion.svg>
           <span className="settings-label">Settings</span>
         </motion.button>
         {hasBooks && <ImportButton onFiles={onFiles} onFolder={onFolder} busy={s.busy} />}
@@ -175,8 +192,8 @@ export function LibraryScreen() {
               <SortMenu sort={s.sort} onSort={lib.setSort} />
               <label className="size">
                 <span aria-hidden="true" className="a-small">A</span>
-                <input type="range" min={0.75} max={1.4} step={0.05} value={coverSize} aria-label="Cover size"
-                  onChange={(e) => settingsStore.getState().set('coverSize', Number(e.target.value))} />
+                <input type="range" min={0.75} max={1.4} step={0.01} value={coverSize} aria-label="Cover size"
+                  onChange={(e) => onCover(Number(e.target.value))} />
                 <span aria-hidden="true" className="a-big">A</span>
               </label>
             </div>
@@ -186,10 +203,10 @@ export function LibraryScreen() {
 
       {hasBooks && !folder && (
         view.items.length ? (
-          <section className="shelf" aria-label="Books">
+          <section className="shelf" aria-label="Books" ref={shelfRef}>
             <AnimatePresence initial={false} mode="popLayout">{view.items.map((it, i) => it.kind === 'book'
               ? card(it.book, i)
-              : <SeriesCard key={`s:${it.key}`} seriesKey={it.key} name={it.name} books={it.books} index={i} />)}</AnimatePresence>
+              : <SeriesCard key={`s:${it.key}`} seriesKey={it.key} name={it.name} books={it.books} index={i} cols={cols} />)}</AnimatePresence>
           </section>
         ) : s.loaded && (
           <motion.div className="no-results" data-testid="no-results" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={settle}>
